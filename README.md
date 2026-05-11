@@ -1,11 +1,39 @@
-<div align="center">
+# CIGHT
 
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+AI-powered entertainment recognition and discovery platform. Identify movies and TV shows from screenshots and clips instantly.
 
-  <h1>Built with AI Studio</h2>
+## Features
 
-  <p>The fastest path from prompt to production with Gemini.</p>
+- **Trending Movies**: Discover what's popular right now.
+- **AI Scanner**: Upload screenshots or clips to identify movies using Gemini AI.
+- **AI Chat**: Talk to our movie expert AI for recommendations and trivia.
+- **Watchlist**: Keep track of movies you want to see.
+- **Deep Metadata**: Powered by TMDB for accurate movie information.
 
-  <a href="https://aistudio.google.com/apps">Start building</a>
+## Tech Stack
 
-</div>
+- **Frontend**: React, Vite, Tailwind CSS, Motion
+- **Backend/Storage**: Firebase (Firestore, Auth)
+- **AI**: Google Gemini Pro & Flash
+- **Data Source**: TMDB API
+
+## Setup Requirements
+
+To use the movie discovery features, you must provide a TMDB API Key.
+
+1. Get an API key from [The Movie Database (TMDB)](https://www.themoviedb.org/documentation/api).
+2. Open the **Settings** menu in the AI Studio editor.
+3. Add a new secret with the key `VITE_TMDB_API_KEY` and your actual API key as the value.
+
+## Development
+
+```bash
+npm install
+npm run dev
+```
+
+## Production Build
+
+```bash
+npm run build
+```

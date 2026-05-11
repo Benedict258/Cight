@@ -1,0 +1,83 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // 3. Primitives
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+    function incoming() {
+      return request.resource.data;
+    }
+    function existing() {
+      return resource.data;
+    }
+
+    // 2. Validation Blueprints
+    function isValidUser(data) {
+      return data.keys().hasAll(['id', 'email', 'createdAt']) &&
+             data.id == request.auth.uid &&
+             data.email is string &&
+             data.createdAt == request.time;
+    }
+
+    function isValidScan(data) {
+      return data.keys().hasAll(['userId', 'resultId', 'createdAt']) &&
+             data.userId == request.auth.uid &&
+             data.resultId is string &&
+             data.resultId.size() <= 256 &&
+             data.createdAt == request.time;
+    }
+
+    function isValidWatchlistItem(data) {
+      return data.keys().hasAll(['userId', 'movieId', 'addedAt']) &&
+             data.userId == request.auth.uid &&
+             data.movieId is string &&
+             data.addedAt == request.time;
+    }
+
+    function isValidConversation(data) {
+      return data.keys().hasAll(['userId', 'messages']) &&
+             data.userId == request.auth.uid &&
+             data.messages is list &&
+             data.messages.size() <= 100;
+    }
+
+    // 1. Entity Matches
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidUser(incoming());
+      allow update: if isOwner(userId) && isValidUser(incoming()) && 
+                    incoming().diff(existing()).affectedKeys().hasOnly(['name']);
+    }
+
+    match /scans/{scanId} {
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow get: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && isValidScan(incoming());
+    }
+
+    match /watchlists/{watchId} {
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow get: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && isValidWatchlistItem(incoming());
+      allow delete: if isSignedIn() && existing().userId == request.auth.uid;
+    }
+
+    match /conversations/{convId} {
+      allow get: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && isValidConversation(incoming());
+      allow update: if isSignedIn() && existing().userId == request.auth.uid && isValidConversation(incoming());
+    }
+  }
+}

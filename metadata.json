@@ -1,0 +1,6 @@
+{
+  "name": "CIGHT",
+  "description": "AI-powered entertainment recognition and discovery platform. Identify movies and TV shows from screenshots and clips instantly.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["AI Image Recognition", "AI Chatbot", "Movie Metadata Integration"]
+}
