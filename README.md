@@ -6,16 +6,20 @@ AI-powered entertainment recognition and discovery platform. Identify movies and
 
 - **Trending Movies**: Discover what's popular right now.
 - **AI Scanner**: Upload screenshots or clips to identify movies using Gemini AI.
-- **AI Chat**: Talk to our movie expert AI for recommendations and trivia.
-- **Watchlist**: Keep track of movies you want to see.
-- **Deep Metadata**: Powered by TMDB for accurate movie information.
+- **Anime Recognition**: Specialized support for anime frames via Trace.moe and AniList.
+- **Watch Providers**: Real-time information on where to stream identified content legally.
+- **AI Expert**: Talk to our specialized movie/anime agent for recommendations and trivia.
+- **Library**: Keep track of movies and shows you want to watch.
 
 ## Tech Stack
 
 - **Frontend**: React, Vite, Tailwind CSS, Motion
 - **Backend/Storage**: Firebase (Firestore, Auth)
-- **AI**: Google Gemini Pro & Flash
-- **Data Source**: TMDB API
+- **AI**: Google Gemini 1.5 Flash (Recognition & Chat)
+- **Data Sources**:
+  - **TMDB API**: Global movie/TV metadata and watch providers.
+  - **AniList API**: Detailed anime metadata and character info.
+  - **Trace.moe API**: Frame-accurate anime identification.
 
 ## Setup Requirements
 

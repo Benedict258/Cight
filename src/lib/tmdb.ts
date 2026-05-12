@@ -30,14 +30,23 @@ export async function getTrendingMovies() {
   return fetchTMDB('/trending/movie/day');
 }
 
-export async function searchMovie(query: string, year?: number) {
+export async function searchMulti(query: string, year?: number) {
   const params: Record<string, string> = { query };
   if (year) params.year = year.toString();
-  return fetchTMDB('/search/movie', params);
+  // Using multi-search to find both movies and TV shows
+  return fetchTMDB('/search/multi', params);
+}
+
+export async function getDetails(id: string, type: 'movie' | 'tv') {
+  return fetchTMDB(`/${type}/${id}`, { append_to_response: 'videos,credits,recommendations,watch/providers' });
 }
 
 export async function getMovieDetails(movieId: string) {
-  return fetchTMDB(`/movie/${movieId}`, { append_to_response: 'videos,credits,recommendations' });
+  return fetchTMDB(`/movie/${movieId}`, { append_to_response: 'videos,credits,recommendations,watch/providers' });
+}
+
+export async function getWatchProviders(movieId: string) {
+  return fetchTMDB(`/movie/${movieId}/watch/providers`);
 }
 
 export async function getMovieCredits(movieId: string) {

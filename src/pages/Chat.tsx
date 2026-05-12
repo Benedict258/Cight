@@ -47,18 +47,18 @@ export default function Chat() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-10 h-[calc(100vh-10rem)] flex flex-col pt-8 relative z-10">
-      <div className="flex items-center gap-6 mb-12">
-        <div className="h-10 w-2 bg-[#FF4E00]"></div>
+    <div className="max-w-7xl mx-auto px-8 h-[calc(100vh-8rem)] flex flex-col pt-6 relative z-10">
+      <div className="flex items-center gap-4 mb-10">
+        <div className="h-8 w-1.5 bg-[#FF4E00]"></div>
         <div>
-          <h1 className="text-4xl font-black uppercase italic tracking-tight">AI Assistant</h1>
-          <p className="text-[#FF4E00] text-[10px] font-black uppercase tracking-[0.2em] mt-1">Specialized Entertainment Agent</p>
+          <h1 className="text-3xl font-black uppercase italic tracking-tight">AI Assistant</h1>
+          <p className="text-[#FF4E00] text-[9px] font-black uppercase tracking-[0.2em] mt-0.5">Specialized Entertainment Agent</p>
         </div>
       </div>
 
       <div 
         ref={scrollRef}
-        className="flex-1 overflow-y-auto mb-10 pr-6 space-y-10 scrollbar-thin scrollbar-thumb-white/10"
+        className="flex-1 overflow-y-auto mb-8 pr-4 space-y-8 scrollbar-thin scrollbar-thumb-white/10"
       >
         <AnimatePresence initial={false}>
           {messages.map((m, idx) => (
@@ -67,25 +67,25 @@ export default function Chat() {
               initial={{ opacity: 0, x: m.role === 'user' ? 20 : -20 }}
               animate={{ opacity: 1, x: 0 }}
               className={cn(
-                "flex gap-6 max-w-[80%]",
+                "flex gap-4 max-w-[85%]",
                 m.role === 'user' ? "ml-auto flex-row-reverse" : "mr-auto"
               )}
             >
               <div className={cn(
-                "w-12 h-12 shrink-0 border-2 flex items-center justify-center font-black italic mt-1",
+                "w-10 h-10 shrink-0 border flex items-center justify-center font-black italic mt-1",
                 m.role === 'user' ? "bg-white text-black border-white" : "bg-[#151515] text-[#FF4E00] border-white/10"
               )}>
                 {m.role === 'user' ? 'U' : 'C'}
               </div>
               <div className={cn(
-                "p-8 rounded-sm relative",
+                "p-6 rounded-sm relative",
                 m.role === 'user' ? "bg-white text-black" : "bg-[#151515] border border-white/5 text-zinc-300"
               )}>
-                <div className="markdown-body prose prose-sm max-w-none prose-p:font-medium prose-headings:font-black prose-headings:uppercase prose-headings:italic">
+                <div className="markdown-body prose prose-sm max-w-none prose-p:font-medium prose-headings:font-black prose-headings:uppercase prose-headings:italic prose-p:text-xs">
                   <Markdown>{m.content}</Markdown>
                 </div>
                 {m.role === 'model' && (
-                  <div className="absolute -top-3 -left-3 bg-[#FF4E00] text-black text-[8px] font-black uppercase px-2 py-0.5">
+                  <div className="absolute -top-2.5 -left-2.5 bg-[#FF4E00] text-black text-[7px] font-black uppercase px-2 py-0.5">
                     Response
                   </div>
                 )}
@@ -97,33 +97,33 @@ export default function Chat() {
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="flex gap-6 mr-auto"
+            className="flex gap-4 mr-auto"
           >
-            <div className="w-12 h-12 bg-[#151515] border border-white/10 flex items-center justify-center">
-              <Loader2 className="w-6 h-6 text-[#FF4E00] animate-spin" />
+            <div className="w-10 h-10 bg-[#151515] border border-white/10 flex items-center justify-center">
+              <Loader2 className="w-5 h-5 text-[#FF4E00] animate-spin" />
             </div>
-            <div className="p-8 bg-[#151515] border border-white/5 flex gap-2 items-center">
+            <div className="p-6 bg-[#151515] border border-white/5 flex gap-2 items-center">
               {[...Array(3)].map((_, i) => (
-                <div key={i} className="w-2 h-2 bg-[#FF4E00] animate-pulse" style={{ animationDelay: `${i * 0.2}s` }} />
+                <div key={i} className="w-1.5 h-1.5 bg-[#FF4E00] animate-pulse" style={{ animationDelay: `${i * 0.2}s` }} />
               ))}
             </div>
           </motion.div>
         )}
       </div>
 
-      <form onSubmit={handleSend} className="relative mb-10">
+      <form onSubmit={handleSend} className="relative mb-8">
         <input 
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="Ask about movies, actors, or recommendations..." 
-          className="w-full bg-[#151515] border-2 border-white/10 rounded-sm py-6 px-10 pr-20 text-sm font-bold placeholder:text-white/20 focus:outline-none focus:border-[#FF4E00] transition-all uppercase tracking-tight shadow-2xl"
+          className="w-full bg-[#151515] border border-white/10 rounded-sm py-4 px-8 pr-16 text-xs font-bold placeholder:text-white/20 focus:outline-none focus:border-[#FF4E00] transition-all uppercase tracking-tight shadow-2xl"
         />
         <button 
           type="submit" 
           disabled={!input.trim() || loading}
-          className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-[#FF4E00] hover:bg-white text-black rounded-sm flex items-center justify-center transition-all disabled:opacity-30 group"
+          className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 bg-[#FF4E00] hover:bg-white text-black rounded-sm flex items-center justify-center transition-all disabled:opacity-30 group"
         >
-          <Send className="w-5 h-5 group-hover:scale-110 transition-transform" />
+          <Send className="w-4 h-4 group-hover:scale-110 transition-transform" />
         </button>
       </form>
     </div>

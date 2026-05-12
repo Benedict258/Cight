@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { getMovieDetails, TMDB_IMAGE_BASE } from '../lib/tmdb';
+import { useParams, Link, useSearchParams } from 'react-router-dom';
+import { getDetails, TMDB_IMAGE_BASE } from '../lib/tmdb';
 import { Star, Clock, Calendar, Bookmark, Share2, ArrowLeft, Play, Info } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useAuth } from '../App';
@@ -9,6 +9,8 @@ import { collection, addDoc, query, where, getDocs, deleteDoc, doc } from 'fireb
 
 export default function Movie() {
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
+  const type = (searchParams.get('type') || 'movie') as 'movie' | 'tv';
   const { user } = useAuth();
   const [movie, setMovie] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -19,7 +21,7 @@ export default function Movie() {
     if (!id) return;
     
     setLoading(true);
-    getMovieDetails(id)
+    getDetails(id, type)
       .then(res => {
         setMovie(res);
         setLoading(false);
@@ -33,7 +35,7 @@ export default function Movie() {
       const q = query(collection(db, 'watchlists'), where('userId', '==', user.uid), where('movieId', '==', id));
       getDocs(q).then(snap => setIsSaved(!snap.empty));
     }
-  }, [id, user]);
+  }, [id, user, type]);
 
   const toggleWatchlist = async () => {
     if (!user || !movie || saving) return;
@@ -50,7 +52,8 @@ export default function Movie() {
         await addDoc(collection(db, 'watchlists'), {
           userId: user.uid,
           movieId: movie.id.toString(),
-          movieTitle: movie.title,
+          movieTitle: movie.title || movie.name,
+          mediaType: type,
           posterPath: movie.poster_path,
           addedAt: new Date().toISOString()
         });
@@ -72,62 +75,73 @@ export default function Movie() {
   if (!movie) return <div className="text-center py-20">Movie not found</div>;
 
   const trailer = movie.videos?.results?.find((v: any) => v.type === 'Trailer');
+  const title = movie.title || movie.name;
+  const rating = movie.vote_average?.toFixed(1);
+  const year = (movie.release_date || movie.first_air_date || movie.air_date)?.split('-')[0];
+  const runtime = movie.runtime || (movie.episode_run_time?.[0]);
 
   return (
     <div className="min-h-screen pb-20">
       <div className="relative h-[60vh] w-full">
         <img 
           src={`https://image.tmdb.org/t/p/original${movie.backdrop_path}`} 
-          alt={movie.title}
+          alt={title}
           className="w-full h-full object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-[#0a0502] via-[#0a0502]/40 to-transparent" />
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 -mt-64 relative z-10 flex flex-col md:flex-row gap-8">
+      <div className="max-w-7xl mx-auto px-8 -mt-48 relative z-10 flex flex-col md:flex-row gap-8">
         <motion.div 
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
-          className="w-72 hidden md:block shrink-0"
+          className="w-56 hidden md:block shrink-0"
         >
           <img 
             src={`${TMDB_IMAGE_BASE}${movie.poster_path}`} 
-            alt={movie.title}
-            className="w-full rounded-3xl shadow-2xl border border-white/10"
+            alt={title}
+            className="w-full rounded-sm shadow-2xl border-2 border-white/5 grayscale group-hover:grayscale-0 transition-all duration-700"
           />
         </motion.div>
 
-        <div className="flex-1 space-y-8">
+        <div className="flex-1 space-y-6">
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="space-y-4"
+            className="space-y-3"
           >
             <div className="flex flex-wrap gap-2">
               {movie.genres?.map((g: any) => (
-                <span key={g.id} className="px-3 py-1 bg-zinc-800 rounded-full text-xs font-medium border border-white/5">
+                <span key={g.id} className="px-2 py-0.5 bg-zinc-800 rounded-sm text-[9px] font-black uppercase tracking-widest border border-white/5">
                   {g.name}
                 </span>
               ))}
+              <span className="px-2 py-0.5 bg-white text-black rounded-sm text-[9px] font-black uppercase tracking-widest leading-none">
+                {type}
+              </span>
             </div>
             
-            <h1 className="text-4xl md:text-6xl font-black uppercase italic tracking-tighter leading-none">
-              {movie.title}
+            <h1 className="text-4xl md:text-5xl font-black uppercase italic tracking-tighter leading-none">
+              {title}
             </h1>
 
-            <div className="flex items-center gap-6 text-zinc-400 text-sm font-medium">
-              <div className="flex items-center gap-1.5">
-                <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-                <span className="text-white">{movie.vote_average?.toFixed(1)}</span>
+            <div className="flex items-center gap-4 text-white/50 text-[10px] font-black uppercase tracking-widest">
+              <div className="flex items-center gap-1">
+                <Star className="w-3 h-3 text-[#FF4E00] fill-[#FF4E00]" />
+                <span className="text-white">{rating}</span>
               </div>
-              <div className="flex items-center gap-1.5">
-                <Clock className="w-4 h-4" />
-                <span>{movie.runtime} min</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <Calendar className="w-4 h-4" />
-                <span>{movie.release_date}</span>
-              </div>
+              {runtime && (
+                <div className="flex items-center gap-1">
+                  <Clock className="w-3 h-3" />
+                  <span>{runtime} min</span>
+                </div>
+              )}
+              {year && (
+                <div className="flex items-center gap-1">
+                  <Calendar className="w-3 h-3" />
+                  <span>{year}</span>
+                </div>
+              )}
             </div>
           </motion.div>
 
@@ -135,26 +149,26 @@ export default function Movie() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="flex flex-wrap gap-4"
+            className="flex flex-wrap gap-3"
           >
             {trailer && (
               <a 
                 href={`https://www.youtube.com/watch?v=${trailer.key}`}
                 target="_blank"
                 rel="noreferrer"
-                className="flex items-center gap-2 px-8 py-3 bg-white text-black rounded-full font-bold hover:bg-zinc-200 transition-colors"
+                className="flex items-center gap-2 px-8 py-3 bg-white text-black text-[10px] font-black uppercase tracking-widest hover:bg-[#FF4E00] transition-colors"
               >
-                <Play className="w-4 h-4 fill-current" /> Watch Trailer
+                <Play className="w-3.5 h-3.5 fill-current" /> Watch Trailer
               </a>
             )}
             <button 
               onClick={toggleWatchlist}
               disabled={!user || saving}
-              className={movie && `flex items-center gap-2 px-8 py-3 rounded-full font-bold border transition-all ${
-                isSaved ? 'bg-orange-600/10 border-orange-600 text-orange-500' : 'bg-transparent border-white/20 hover:border-white/40'
+              className={`flex items-center gap-2 px-8 py-3 text-[10px] font-black uppercase tracking-widest border-2 transition-all ${
+                isSaved ? 'bg-[#FF4E00]/10 border-[#FF4E00] text-[#FF4E00]' : 'bg-transparent border-white/20 hover:border-white'
               } disabled:opacity-50`}
             >
-              <Bookmark className={`w-4 h-4 ${isSaved ? 'fill-current' : ''}`} />
+              <Bookmark className={`w-3.5 h-3.5 ${isSaved ? 'fill-current' : ''}`} />
               {isSaved ? 'In Watchlist' : 'Add to Watchlist'}
             </button>
           </motion.div>
@@ -163,15 +177,41 @@ export default function Movie() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="space-y-4"
+            className="space-y-3"
           >
-            <h3 className="text-xl font-bold uppercase tracking-tight flex items-center gap-2">
-              <Info className="w-5 h-5 text-zinc-400" /> Synopsis
+            <h3 className="text-lg font-black uppercase italic tracking-tight flex items-center gap-2">
+              <Info className="w-4 h-4 text-[#FF4E00]" /> Synopsis
             </h3>
-            <p className="text-zinc-400 leading-relaxed text-lg">
+            <p className="text-white/70 leading-relaxed text-sm max-w-2xl font-medium">
               {movie.overview}
             </p>
           </motion.div>
+
+          {/* Watch Providers */}
+          {movie['watch/providers']?.results?.US?.flatrate && (
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+              className="space-y-4 pt-4"
+            >
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#FF4E00]">Where to Watch</p>
+              <div className="flex flex-wrap gap-4">
+                {movie['watch/providers'].results.US.flatrate.map((provider: any) => (
+                  <div key={provider.provider_id} className="group relative">
+                    <img 
+                      src={`https://image.tmdb.org/t/p/original${provider.logo_path}`} 
+                      alt={provider.provider_name}
+                      className="w-8 h-8 rounded-sm filter grayscale hover:grayscale-0 transition-all border border-white/10"
+                    />
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-1 bg-white text-black text-[8px] font-black uppercase tracking-tighter whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                      {provider.provider_name}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          )}
 
           {/* Cast */}
           <motion.div 
@@ -180,11 +220,11 @@ export default function Movie() {
             transition={{ delay: 0.3 }}
             className="space-y-4 pt-4"
           >
-            <h3 className="text-xl font-bold uppercase tracking-tight">Top Cast</h3>
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#FF4E00]">Top Cast</p>
             <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
               {movie.credits?.cast?.slice(0, 8).map((person: any) => (
-                <div key={person.id} className="shrink-0 w-24">
-                  <div className="w-24 h-24 rounded-full overflow-hidden border border-white/10 mb-2">
+                <div key={person.id} className="shrink-0 w-20">
+                  <div className="w-20 h-20 rounded-sm overflow-hidden border border-white/10 mb-2 grayscale hover:grayscale-0 transition-all">
                     {person.profile_path ? (
                       <img 
                         src={`${TMDB_IMAGE_BASE}${person.profile_path}`} 
@@ -192,11 +232,11 @@ export default function Movie() {
                         alt={person.name}
                       />
                     ) : (
-                      <div className="w-full h-full bg-zinc-800 flex items-center justify-center text-xs text-zinc-500">No Image</div>
+                      <div className="w-full h-full bg-zinc-800 flex items-center justify-center text-[8px] text-zinc-500 font-bold uppercase">No Image</div>
                     )}
                   </div>
-                  <p className="text-[10px] font-bold text-center line-clamp-1">{person.name}</p>
-                  <p className="text-[9px] text-zinc-500 text-center line-clamp-1">{person.character}</p>
+                  <p className="text-[9px] font-black text-center line-clamp-1 uppercase whitespace-nowrap">{person.name}</p>
+                  <p className="text-[8px] text-white/40 text-center line-clamp-1 uppercase font-bold">{person.character}</p>
                 </div>
               ))}
             </div>
