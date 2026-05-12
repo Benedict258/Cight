@@ -60,12 +60,27 @@
         "updatedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["userId", "messages"]
+    },
+    "Subscriber": {
+      "title": "Subscriber",
+      "description": "User email for newsletter/notifications.",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "userId": { "type": "string" },
+        "subscribedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["email", "subscribedAt"]
     }
   },
   "firestore": {
     "users/{userId}": {
       "schema": "User",
       "description": "User profiles."
+    },
+    "subscribers/{subId}": {
+      "schema": "Subscriber",
+      "description": "Email subscriber list for Substack sync."
     },
     "scans/{scanId}": {
       "schema": "Scan",

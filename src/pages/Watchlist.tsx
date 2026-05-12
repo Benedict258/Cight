@@ -2,13 +2,14 @@ import { useState, useEffect } from 'react';
 import { db } from '../lib/firebase';
 import { collection, query, where, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import { useAuth } from '../App';
-import { Link } from 'react-router-dom';
-import { Trash2, Film, Star, ArrowRight } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Trash2, Film, Star, ArrowRight, ArrowLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { TMDB_IMAGE_BASE } from '../lib/tmdb';
 
 export default function Watchlist() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -47,8 +48,12 @@ export default function Watchlist() {
 
   return (
     <div className="max-w-7xl mx-auto px-8 py-10 relative z-10">
+      <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-white/50 hover:text-[#FF4E00] transition-colors mb-8 group">
+        <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+        <span>Back</span>
+      </button>
       <div className="flex items-center gap-4 mb-12">
-        <div className="h-10 w-2 bg-[#FF4E00]"></div>
+        <img src="/cight_logo.png" alt="" className="w-20 h-20 object-contain" referrerPolicy="no-referrer" />
         <div>
           <h1 className="text-4xl font-black uppercase italic tracking-tighter">WATCHLIST</h1>
           <p className="text-[#FF4E00] text-[9px] font-black uppercase tracking-[0.2em] mt-0.5">CURATED SELECTION</p>

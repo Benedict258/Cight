@@ -1,27 +1,61 @@
 import { useState, useEffect } from 'react';
-import { getTrendingMovies, TMDB_IMAGE_BASE } from '../lib/tmdb';
-import { Link } from 'react-router-dom';
+import { getTrendingMovies, TMDB_IMAGE_BASE, getGenres, discoverMoviesByGenre } from '../lib/tmdb';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { Play, Star, TrendingUp, Info, ArrowRight } from 'lucide-react';
+import { Play, Star, TrendingUp, Info, ArrowRight, ChevronDown, ArrowLeft } from 'lucide-react';
 
 export default function Home() {
+  const navigate = useNavigate();
   const [trending, setTrending] = useState<any[]>([]);
+  const [genres, setGenres] = useState<any[]>([]);
+  const [selectedGenre, setSelectedGenre] = useState<string>('all');
   const [loading, setLoading] = useState(true);
+  const [fetchingMovies, setFetchingMovies] = useState(false);
 
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    getTrendingMovies()
-      .then(res => {
-        setTrending(res.results.slice(0, 10));
+    Promise.all([
+      getTrendingMovies(),
+      getGenres()
+    ])
+      .then(([trendingRes, genresRes]) => {
+        setTrending(trendingRes.results.slice(0, 10));
+        setGenres(genresRes.genres);
         setLoading(false);
       })
       .catch(err => {
         console.error(err);
-        setError(err.message === 'MISSING_TMDB_KEY' ? 'CONFIG_REQUIRED' : 'Failed to load movies');
+        setError(err.message === 'MISSING_TMDB_KEY' ? 'CONFIG_REQUIRED' : 'Failed to load content');
         setLoading(false);
       });
   }, []);
+
+  useEffect(() => {
+    if (selectedGenre === 'all') {
+      if (genres.length > 0) { // Only refetch if it's not the initial mount
+        setFetchingMovies(true);
+        getTrendingMovies()
+          .then(res => {
+            setTrending(res.results.slice(0, 10));
+            setFetchingMovies(false);
+          })
+          .catch(() => setFetchingMovies(false));
+      }
+      return;
+    }
+
+    setFetchingMovies(true);
+    discoverMoviesByGenre(selectedGenre)
+      .then(res => {
+        setTrending(res.results.slice(0, 10));
+        setFetchingMovies(false);
+      })
+      .catch((err) => {
+        console.error(err);
+        setFetchingMovies(false);
+      });
+  }, [selectedGenre]);
 
   if (loading) return (
     <div className="flex items-center justify-center min-h-[60vh]">
@@ -49,6 +83,12 @@ export default function Home() {
 
   return (
     <div className="space-y-16 min-h-screen">
+      <div className="max-w-7xl mx-auto px-8 pt-6">
+        <button onClick={() => navigate('/')} className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-white/50 hover:text-[#FF4E00] transition-colors group">
+          <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+          <span>Back to Landing</span>
+        </button>
+      </div>
       {/* Hero Section */}
       <section className="max-w-7xl mx-auto px-8 flex flex-col md:flex-row gap-8 items-center min-h-[70vh] relative pt-8">
         {/* Left: Typography */}
@@ -159,12 +199,28 @@ export default function Home() {
 
       {/* Popular Movies */}
       <section className="max-w-7xl mx-auto px-8 space-y-10">
-        <div className="flex items-center gap-4">
-          <div className="h-8 w-1.5 bg-[#FF4E00]"></div>
-          <h2 className="text-3xl font-black italic uppercase tracking-tighter">Latest Trends</h2>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="flex items-center gap-4">
+            <img src="/cight_logo.png" alt="" className="w-16 h-16 object-contain" referrerPolicy="no-referrer" />
+            <h2 className="text-3xl font-black italic uppercase tracking-tighter">Latest Trends</h2>
+          </div>
+
+          <div className="relative group">
+            <select 
+              value={selectedGenre}
+              onChange={(e) => setSelectedGenre(e.target.value)}
+              className="appearance-none bg-white/5 border-2 border-white/10 px-6 py-2.5 pr-12 text-[10px] font-black uppercase tracking-widest cursor-pointer hover:border-[#FF4E00] focus:border-[#FF4E00] outline-none transition-all rounded-none"
+            >
+              <option value="all" className="bg-zinc-900">All Genres</option>
+              {genres.map(genre => (
+                <option key={genre.id} value={genre.id} className="bg-zinc-900">{genre.name}</option>
+              ))}
+            </select>
+            <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none text-white/40 group-hover:text-[#FF4E00] transition-colors" />
+          </div>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-8">
+        <div className={`grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-8 transition-opacity duration-300 ${fetchingMovies ? 'opacity-30' : 'opacity-100'}`}>
           {trending.slice(1).map((movie, idx) => (
             <motion.div
               key={movie.id}
@@ -196,8 +252,8 @@ export default function Home() {
       </section>
 
       {/* Marquee Footer */}
-      <footer className="bg-white text-black py-6 overflow-hidden border-t-4 border-[#FF4E00]">
-        <div className="flex gap-16 whitespace-nowrap px-10 animate-marquee text-sm font-black uppercase tracking-[0.2em]">
+      <footer className="bg-white text-black py-2.5 overflow-hidden border-t-2 border-[#FF4E00]">
+        <div className="flex gap-16 whitespace-nowrap px-10 animate-marquee text-[10px] font-black uppercase tracking-[0.2em]">
           <span>Trending: {trending.map(m => m.title).join(' • ')} • Identify Any Scene Instantly • Cight AI Recognition • {new Date().getFullYear()}</span>
           <span aria-hidden="true">Trending: {trending.map(m => m.title).join(' • ')} • Identify Any Scene Instantly • Cight AI Recognition • {new Date().getFullYear()}</span>
         </div>

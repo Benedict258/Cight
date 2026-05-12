@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link, useSearchParams } from 'react-router-dom';
+import { useParams, Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { getDetails, TMDB_IMAGE_BASE } from '../lib/tmdb';
 import { Star, Clock, Calendar, Bookmark, Share2, ArrowLeft, Play, Info } from 'lucide-react';
 import { motion } from 'motion/react';
@@ -9,6 +9,7 @@ import { collection, addDoc, query, where, getDocs, deleteDoc, doc } from 'fireb
 
 export default function Movie() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const type = (searchParams.get('type') || 'movie') as 'movie' | 'tv';
   const { user } = useAuth();
@@ -82,7 +83,13 @@ export default function Movie() {
 
   return (
     <div className="min-h-screen pb-20">
-      <div className="relative h-[60vh] w-full">
+      <div className="max-w-7xl mx-auto px-8 pt-8 relative z-50">
+        <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-white/50 hover:text-white transition-colors group bg-black/40 backdrop-blur-md px-4 py-2 rounded-full w-fit">
+          <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+          <span>Back</span>
+        </button>
+      </div>
+      <div className="relative h-[60vh] w-full -mt-20">
         <img 
           src={`https://image.tmdb.org/t/p/original${movie.backdrop_path}`} 
           alt={title}

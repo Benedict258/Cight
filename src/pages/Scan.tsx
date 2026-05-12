@@ -1,17 +1,18 @@
 import { useState, useRef } from 'react';
-import { Camera, Upload, Search, Link as LinkIcon, ArrowRight, Loader2, Info, AlertTriangle } from 'lucide-react';
+import { Camera, Upload, Search, Link as LinkIcon, ArrowRight, Loader2, Info, AlertTriangle, ArrowLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { identifyMovieFromMedia } from '../lib/gemini';
 import { traceMoeIdentify } from '../lib/tracemoe';
 import { searchAnime } from '../lib/anilist';
 import { searchMulti, TMDB_IMAGE_BASE } from '../lib/tmdb';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../App';
 import { db } from '../lib/firebase';
 import { collection, addDoc } from 'firebase/firestore';
 
 export default function Scan() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [mimeType, setMimeType] = useState<string | null>(null);
@@ -109,8 +110,12 @@ export default function Scan() {
 
   return (
     <div className="max-w-7xl mx-auto px-8 py-10">
+      <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-white/50 hover:text-[#FF4E00] transition-colors mb-8 group">
+        <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+        <span>Back</span>
+      </button>
       <div className="flex items-center gap-4 mb-12">
-        <div className="h-10 w-2 bg-[#FF4E00]"></div>
+        <img src="/cight_logo.png" alt="" className="w-20 h-20 object-contain" referrerPolicy="no-referrer" />
         <h1 className="text-4xl font-black italic uppercase tracking-tighter">Scene Scanner</h1>
       </div>
 

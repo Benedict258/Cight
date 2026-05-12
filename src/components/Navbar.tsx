@@ -10,7 +10,7 @@ export default function Navbar() {
   const location = useLocation();
 
   const navItems = [
-    { name: 'Discover', path: '/', icon: Home },
+    { name: 'Discover', path: '/browse', icon: Home },
     { name: 'Scanner', path: '/scan', icon: Camera },
     { name: 'AI Expert', path: '/chat', icon: MessageSquare },
   ];
@@ -23,9 +23,12 @@ export default function Navbar() {
     <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/10 bg-[#0A0A0A]/80 backdrop-blur-md">
       <div className="max-w-7xl mx-auto px-8 h-16 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2 group">
-          <div className="w-6 h-6 bg-[#FF4E00] rounded-sm flex items-center justify-center font-black text-lg group-hover:scale-105 transition-transform text-black uppercase">
-            C
-          </div>
+          <img 
+            src="/cight_logo.png" 
+            alt="CIGHT Logo" 
+            className="w-12 h-12 object-contain group-hover:scale-110 transition-transform"
+            referrerPolicy="no-referrer"
+          />
           <span className="text-xl font-black tracking-tighter uppercase italic">Cight</span>
         </Link>
 

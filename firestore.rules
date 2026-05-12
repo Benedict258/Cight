@@ -53,12 +53,26 @@ service cloud.firestore {
              data.messages.size() <= 100;
     }
 
+    function isValidSubscriber(data) {
+      return data.keys().hasAll(['email', 'userId', 'subscribedAt']) &&
+             data.email is string &&
+             data.email.size() <= 256 &&
+             data.userId == request.auth.uid &&
+             data.subscribedAt == request.time;
+    }
+
     // 1. Entity Matches
     match /users/{userId} {
       allow get: if isOwner(userId);
       allow create: if isOwner(userId) && isValidUser(incoming());
       allow update: if isOwner(userId) && isValidUser(incoming()) && 
                     incoming().diff(existing()).affectedKeys().hasOnly(['name']);
+    }
+
+    match /subscribers/{subId} {
+      allow get: if isOwner(subId);
+      allow create: if isOwner(subId) && isValidSubscriber(incoming());
+      allow update: if isOwner(subId) && isValidSubscriber(incoming());
     }
 
     match /scans/{scanId} {

@@ -30,6 +30,18 @@ export async function getTrendingMovies() {
   return fetchTMDB('/trending/movie/day');
 }
 
+export async function getGenres() {
+  return fetchTMDB('/genre/movie/list');
+}
+
+export async function discoverMoviesByGenre(genreId: string) {
+  return fetchTMDB('/discover/movie', {
+    with_genres: genreId,
+    sort_by: 'popularity.desc',
+    include_adult: 'false',
+  });
+}
+
 export async function searchMulti(query: string, year?: number) {
   const params: Record<string, string> = { query };
   if (year) params.year = year.toString();

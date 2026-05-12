@@ -1,6 +1,6 @@
 {
-  "name": "CIGHT",
-  "description": "AI-powered entertainment recognition and discovery platform. Identify movies and TV shows from screenshots and clips instantly.",
+  "name": "CIGHT - AI-powered entertainment discovery",
+  "description": "Identify movies and TV shows from screenshots and clips instantly. Power your cinematic curiosity with Gemini AI.",
   "requestFramePermissions": [],
   "majorCapabilities": ["AI Image Recognition", "AI Chatbot", "Movie Metadata Integration"]
 }

@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
-import { MessageSquare, Send, Sparkles, User, Loader2, Info } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { chatAssistant } from '../lib/gemini';
 import { useAuth } from '../App';
 import { cn } from '../lib/utils';
 import Markdown from 'react-markdown';
+import { useNavigate } from 'react-router-dom';
+import { ArrowLeft, MessageSquare, Send, Sparkles, User, Loader2, Info } from 'lucide-react';
 
 interface Message {
   role: 'user' | 'model';
@@ -13,6 +14,7 @@ interface Message {
 
 export default function Chat() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [messages, setMessages] = useState<Message[]>([
     { role: 'model', content: "Hi! I'm CIGHT Assistant. Ask me anything about movies, actors, or show recommendations!" }
   ]);
@@ -48,8 +50,12 @@ export default function Chat() {
 
   return (
     <div className="max-w-7xl mx-auto px-8 h-[calc(100vh-8rem)] flex flex-col pt-6 relative z-10">
+      <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-white/50 hover:text-[#FF4E00] transition-colors mb-6 group">
+        <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+        <span>Back</span>
+      </button>
       <div className="flex items-center gap-4 mb-10">
-        <div className="h-8 w-1.5 bg-[#FF4E00]"></div>
+        <img src="/cight_logo.png" alt="" className="w-16 h-16 object-contain" referrerPolicy="no-referrer" />
         <div>
           <h1 className="text-3xl font-black uppercase italic tracking-tight">AI Assistant</h1>
           <p className="text-[#FF4E00] text-[9px] font-black uppercase tracking-[0.2em] mt-0.5">Specialized Entertainment Agent</p>
@@ -73,9 +79,9 @@ export default function Chat() {
             >
               <div className={cn(
                 "w-10 h-10 shrink-0 border flex items-center justify-center font-black italic mt-1",
-                m.role === 'user' ? "bg-white text-black border-white" : "bg-[#151515] text-[#FF4E00] border-white/10"
+                m.role === 'user' ? "bg-white text-black border-white" : "bg-[#151515] border-white/10"
               )}>
-                {m.role === 'user' ? 'U' : 'C'}
+                {m.role === 'user' ? 'U' : <img src="/cight_logo.png" alt="CIGHT" className="w-12 h-12 object-contain" referrerPolicy="no-referrer" />}
               </div>
               <div className={cn(
                 "p-6 rounded-sm relative",

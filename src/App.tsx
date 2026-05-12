@@ -6,8 +6,10 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { useState, useEffect, createContext, useContext } from 'react';
-import { auth } from './lib/firebase';
+import { auth, db } from './lib/firebase';
+import { collection, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import Navbar from './components/Navbar';
+import Landing from './pages/Landing';
 import Home from './pages/Home';
 import Scan from './pages/Scan';
 import Movie from './pages/Movie';
@@ -35,6 +37,24 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
+  useEffect(() => {
+    if (user && user.email) {
+      const syncSubscriber = async () => {
+        try {
+          // Automated sync to local storage for agentic notifications via Substack export/API
+          await setDoc(doc(db, 'subscribers', user.uid), {
+            email: user.email,
+            userId: user.uid,
+            subscribedAt: serverTimestamp()
+          }, { merge: true });
+        } catch (e) {
+          console.error('Failed to sync subscriber:', e);
+        }
+      };
+      syncSubscriber();
+    }
+  }, [user]);
+
   return (
     <AuthContext.Provider value={{ user, loading }}>
       <Router>
@@ -42,7 +62,8 @@ export default function App() {
           <Navbar />
           <main className="pt-20">
             <Routes>
-              <Route path="/" element={<Home />} />
+              <Route path="/" element={<Landing />} />
+              <Route path="/browse" element={<Home />} />
               <Route path="/scan" element={<Scan />} />
               <Route path="/movie/:id" element={<Movie />} />
               <Route path="/chat" element={<Chat />} />
