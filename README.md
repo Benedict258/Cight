@@ -1,5 +1,7 @@
 # CIGHT
 
+![CIGHT Logo](./cight_logo.png)
+
 AI-powered entertainment recognition and discovery platform. Identify movies and TV shows from screenshots and clips instantly.
 
 ## Live Demo
