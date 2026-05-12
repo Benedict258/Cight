@@ -3,7 +3,7 @@ import { GoogleGenAI, Type } from "@google/genai";
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 export async function identifyMovieFromMedia(base64Data: string, mimeType: string) {
-  const model = "gemini-1.5-flash"; // Use flash for fast recognition
+  const model = "gemini-3-flash-preview"; 
   
   const response = await ai.models.generateContent({
     model,

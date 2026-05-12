@@ -96,7 +96,7 @@ export default function Home() {
           <motion.h1 
             initial={{ opacity: 0, x: -50 }}
             animate={{ opacity: 1, x: 0 }}
-            className="text-[60px] md:text-[100px] lg:text-[130px] font-black leading-[0.8] tracking-tighter uppercase"
+            className="text-5xl sm:text-6xl md:text-[100px] lg:text-[130px] font-black leading-[0.85] md:leading-[0.8] tracking-tighter uppercase break-words"
           >
             SEE IT.<br/>
             <span className="text-[#FF4E00]">KNOW IT.</span>
@@ -106,7 +106,7 @@ export default function Home() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2 }}
-            className="text-lg font-medium opacity-70 max-w-md leading-relaxed"
+            className="text-base md:text-lg font-medium opacity-70 max-w-md leading-relaxed"
           >
             The AI-powered entertainment recognition engine. Identify movies, TV shows, and actors from any screenshot or social clip instantly.
           </motion.p>

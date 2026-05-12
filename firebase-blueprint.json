@@ -71,6 +71,31 @@
         "subscribedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["email", "subscribedAt"]
+    },
+    "Comment": {
+      "title": "Comment",
+      "description": "User comment on a movie.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "movieId": { "type": "string" },
+        "content": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "movieId", "content", "createdAt"]
+    },
+    "Rating": {
+      "title": "Rating",
+      "description": "User like/dislike on a movie.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "movieId": { "type": "string" },
+        "type": { "type": "string", "enum": ["like", "dislike"] },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "movieId", "type", "updatedAt"]
     }
   },
   "firestore": {
@@ -93,6 +118,14 @@
     "conversations/{convId}": {
       "schema": "Conversation",
       "description": "Chat history."
+    },
+    "comments/{commentId}": {
+      "schema": "Comment",
+      "description": "Movie comments."
+    },
+    "ratings/{ratingId}": {
+      "schema": "Rating",
+      "description": "User likes and dislikes."
     }
   }
 }

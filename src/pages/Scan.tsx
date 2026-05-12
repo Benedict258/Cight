@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Camera, Upload, Search, Link as LinkIcon, ArrowRight, Loader2, Info, AlertTriangle, ArrowLeft } from 'lucide-react';
+import { Camera, Upload, Search, Link as LinkIcon, ArrowRight, Loader2, Info, AlertTriangle, ArrowLeft, Play } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { identifyMovieFromMedia } from '../lib/gemini';
 import { traceMoeIdentify } from '../lib/tracemoe';
@@ -7,8 +7,8 @@ import { searchAnime } from '../lib/anilist';
 import { searchMulti, TMDB_IMAGE_BASE } from '../lib/tmdb';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../App';
-import { db } from '../lib/firebase';
-import { collection, addDoc } from 'firebase/firestore';
+import { db, handleFirestoreError, OperationType } from '../lib/firebase';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
 export default function Scan() {
   const { user } = useAuth();
@@ -74,15 +74,20 @@ export default function Scan() {
           setTmdbMatch(multiSearch.results[0]);
           
           if (user) {
-            await addDoc(collection(db, 'scans'), {
-              userId: user.uid,
-              mediaUrl: 'upload-placeholder',
-              resultId: multiSearch.results[0].id.toString(),
-              movieTitle: multiSearch.results[0].title || multiSearch.results[0].name,
-              mediaType: multiSearch.results[0].media_type,
-              confidence: aiResponse.confidence,
-              createdAt: new Date().toISOString()
-            });
+            const path = 'scans';
+            try {
+              await addDoc(collection(db, 'scans'), {
+                userId: user.uid,
+                mediaUrl: 'upload-placeholder',
+                resultId: multiSearch.results[0].id.toString(),
+                movieTitle: multiSearch.results[0].title || multiSearch.results[0].name,
+                mediaType: multiSearch.results[0].media_type,
+                confidence: aiResponse.confidence,
+                createdAt: serverTimestamp()
+              });
+            } catch (e) {
+              handleFirestoreError(e, OperationType.CREATE, path);
+            }
           }
         }
       }
@@ -109,14 +114,14 @@ export default function Scan() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-8 py-10">
+    <div className="max-w-7xl mx-auto px-4 md:px-8 py-10">
       <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-white/50 hover:text-[#FF4E00] transition-colors mb-8 group">
         <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
         <span>Back</span>
       </button>
       <div className="flex items-center gap-4 mb-12">
-        <img src="/cight_logo.png" alt="" className="w-20 h-20 object-contain" referrerPolicy="no-referrer" />
-        <h1 className="text-4xl font-black italic uppercase tracking-tighter">Scene Scanner</h1>
+        <img src="/cight_logo.png" alt="" className="w-16 h-16 md:w-20 md:h-20 object-contain" referrerPolicy="no-referrer" />
+        <h1 className="text-2xl md:text-4xl font-black italic uppercase tracking-tighter">Scene Scanner</h1>
       </div>
 
       <AnimatePresence mode="wait">
@@ -265,6 +270,91 @@ export default function Scan() {
                 <div className="space-y-3">
                    <p className="text-base font-black uppercase italic text-white/60">AI Intelligence Report</p>
                    <p className="opacity-60 text-xs leading-relaxed">{result?.reason}</p>
+                </div>
+
+                {/* Custom Where to Watch for Scan Results */}
+                <div className="space-y-4 pt-4 border-t border-white/5">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#FF4E00]">Where to Watch</p>
+                  <div className="flex flex-wrap gap-4">
+                    <a 
+                      href={`https://moviebox.site/search?q=${encodeURIComponent(result?.title)}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="group relative"
+                    >
+                      <img 
+                        src="/moviebox.svg" 
+                        alt="MOVIEBOX"
+                        className="w-10 h-10 rounded-sm filter grayscale hover:grayscale-0 transition-all border border-white/10 bg-zinc-900 object-contain p-1"
+                      />
+                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-1 bg-white text-black text-[8px] font-black uppercase tracking-tighter whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-[100]">
+                        MOVIEBOX
+                      </div>
+                    </a>
+
+                    <a 
+                      href={`https://www.youtube.com/results?search_query=${encodeURIComponent(result?.title + ' full movie')}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="group relative"
+                    >
+                      <img 
+                        src="https://upload.wikimedia.org/wikipedia/commons/e/ef/Youtube_logo.png" 
+                        alt="YouTube"
+                        className="w-10 h-10 rounded-sm filter grayscale hover:grayscale-0 transition-all border border-white/10 bg-zinc-900 object-contain p-1"
+                      />
+                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-1 bg-white text-black text-[8px] font-black uppercase tracking-tighter whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-[100]">
+                        YouTube
+                      </div>
+                    </a>
+
+                    {(result?.isAnime || tmdbMatch?.genre_ids?.includes(16)) && (
+                      <a 
+                        href={`https://animepahe.com/anime?q=${encodeURIComponent(result?.title)}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="group relative"
+                      >
+                        <img 
+                          src="/animepahe.svg" 
+                          alt="AnimePahe"
+                          className="w-10 h-10 rounded-sm filter grayscale hover:grayscale-0 transition-all border border-white/10 bg-zinc-900 object-contain p-1"
+                        />
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-1 bg-white text-black text-[8px] font-black uppercase tracking-tighter whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-[100]">
+                          AnimePahe
+                        </div>
+                      </a>
+                    )}
+
+                    {(result?.isKDrama || tmdbMatch?.origin_country?.includes('KR')) && (
+                      <a 
+                        href={`https://nkiri.com/?s=${encodeURIComponent(result?.title)}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="group relative"
+                      >
+                        <img 
+                          src="/nkiri.png" 
+                          alt="Nkiri"
+                          className="w-10 h-10 rounded-sm filter grayscale hover:grayscale-0 transition-all border border-white/10 bg-zinc-900 object-contain p-1"
+                        />
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-1 bg-white text-black text-[8px] font-black uppercase tracking-tighter whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-[100]">
+                          Nkiri
+                        </div>
+                      </a>
+                    )}
+                  </div>
+
+                  <div className="pt-4 flex flex-wrap gap-3">
+                    <a 
+                      href={`https://vidsrc.to/embed/movie/${tmdbMatch?.id || 'search?q=' + encodeURIComponent(result?.title)}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center gap-2 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-[9px] font-black uppercase tracking-widest text-white/70 hover:text-white transition-all border border-white/5 rounded-sm"
+                    >
+                      <Play className="w-3 h-3 fill-current" /> Stream Server 1
+                    </a>
+                  </div>
                 </div>
 
                 <div className="flex gap-3 pt-4">

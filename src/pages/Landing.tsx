@@ -1,11 +1,10 @@
 import { motion } from 'motion/react';
 import { Play, Search, Zap, Shield, ArrowRight, Camera, MessageSquare, Bookmark } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { login } from '../lib/firebase';
 import { useAuth } from '../App';
 
 export default function Landing() {
-  const { user } = useAuth();
+  const { user, openAuthModal } = useAuth();
 
   const features = [
     {
@@ -50,7 +49,7 @@ export default function Landing() {
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
-              className="text-6xl md:text-8xl lg:text-9xl font-black uppercase italic tracking-tighter leading-[0.85]"
+              className="text-4xl sm:text-6xl md:text-8xl lg:text-9xl font-black uppercase italic tracking-tighter leading-[0.85] break-words"
             >
               CIGHT <span className="text-[#FF4E00]">AI.</span><br />
               SEE EVERYTHING.
@@ -60,7 +59,7 @@ export default function Landing() {
               initial={{ opacity: 0 }}
               whileInView={{ opacity: 1 }}
               transition={{ delay: 0.2 }}
-              className="max-w-2xl text-white/50 text-base md:text-lg font-medium leading-relaxed"
+              className="max-w-2xl text-white/50 text-sm md:text-base lg:text-lg font-medium leading-relaxed px-4 md:px-0"
             >
               Identify any movie or anime scene instantly from a screenshot. Powered by Gemini Pro Vision and deep cinematic indexing.
             </motion.p>
@@ -69,11 +68,11 @@ export default function Landing() {
               initial={{ opacity: 0, scale: 0.9 }}
               whileInView={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.3 }}
-              className="flex flex-col sm:flex-row gap-4 pt-4"
+              className="flex flex-col sm:flex-row gap-4 pt-4 w-full sm:w-auto px-4 sm:px-0"
             >
               <Link 
                 to="/browse" 
-                className="group relative bg-[#FF4E00] text-black px-10 py-5 font-black uppercase italic text-sm tracking-widest flex items-center gap-3 overflow-hidden"
+                className="group relative bg-[#FF4E00] text-black px-10 py-5 font-black uppercase italic text-sm tracking-widest flex items-center justify-center gap-3 overflow-hidden"
               >
                 <div className="absolute inset-0 bg-white translate-y-full group-hover:translate-y-0 transition-transform duration-500" />
                 <span className="relative z-10">Enter Platform</span>
@@ -82,8 +81,8 @@ export default function Landing() {
               
               {!user && (
                 <button 
-                  onClick={() => login()}
-                  className="px-10 py-5 border-2 border-white/20 hover:border-[#FF4E00] font-black uppercase italic text-sm tracking-widest transition-all"
+                  onClick={openAuthModal}
+                  className="px-10 py-5 border-2 border-white/20 hover:border-[#FF4E00] font-black uppercase italic text-sm tracking-widest transition-all text-center"
                 >
                   Join the Network
                 </button>

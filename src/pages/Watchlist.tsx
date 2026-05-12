@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { db } from '../lib/firebase';
+import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { collection, query, where, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import { useAuth } from '../App';
 import { Link, useNavigate } from 'react-router-dom';
@@ -21,7 +21,7 @@ export default function Watchlist() {
       const data = snap.docs.map(d => ({ firestoreId: d.id, ...d.data() }));
       setItems(data);
     } catch (error) {
-      console.error(error);
+      handleFirestoreError(error, OperationType.LIST, 'watchlists');
     } finally {
       setLoading(false);
     }
@@ -36,7 +36,7 @@ export default function Watchlist() {
       await deleteDoc(doc(db, 'watchlists', firestoreId));
       setItems(prev => prev.filter(i => i.firestoreId !== firestoreId));
     } catch (error) {
-      console.error(error);
+      handleFirestoreError(error, OperationType.DELETE, `watchlists/${firestoreId}`);
     }
   };
 
@@ -47,16 +47,16 @@ export default function Watchlist() {
   );
 
   return (
-    <div className="max-w-7xl mx-auto px-8 py-10 relative z-10">
+    <div className="max-w-7xl mx-auto px-4 md:px-8 py-10 relative z-10">
       <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-white/50 hover:text-[#FF4E00] transition-colors mb-8 group">
         <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
         <span>Back</span>
       </button>
       <div className="flex items-center gap-4 mb-12">
-        <img src="/cight_logo.png" alt="" className="w-20 h-20 object-contain" referrerPolicy="no-referrer" />
+        <img src="/cight_logo.png" alt="" className="w-16 h-16 md:w-20 md:h-20 object-contain" referrerPolicy="no-referrer" />
         <div>
-          <h1 className="text-4xl font-black uppercase italic tracking-tighter">WATCHLIST</h1>
-          <p className="text-[#FF4E00] text-[9px] font-black uppercase tracking-[0.2em] mt-0.5">CURATED SELECTION</p>
+          <h1 className="text-2xl md:text-4xl font-black uppercase italic tracking-tighter">WATCHLIST</h1>
+          <p className="text-[#FF4E00] text-[8px] md:text-[9px] font-black uppercase tracking-[0.2em] mt-0.5">CURATED SELECTION</p>
         </div>
       </div>
 

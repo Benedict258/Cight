@@ -49,16 +49,16 @@ export default function Chat() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-8 h-[calc(100vh-8rem)] flex flex-col pt-6 relative z-10">
-      <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-white/50 hover:text-[#FF4E00] transition-colors mb-6 group">
+    <div className="max-w-7xl mx-auto px-4 md:px-8 h-[calc(100vh-6rem)] md:h-[calc(100vh-8rem)] flex flex-col pt-4 md:pt-6 relative z-10">
+      <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-white/50 hover:text-[#FF4E00] transition-colors mb-4 md:mb-6 group">
         <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
         <span>Back</span>
       </button>
-      <div className="flex items-center gap-4 mb-10">
-        <img src="/cight_logo.png" alt="" className="w-16 h-16 object-contain" referrerPolicy="no-referrer" />
+      <div className="flex items-center gap-4 mb-6 md:mb-10">
+        <img src="/cight_logo.png" alt="" className="w-12 h-12 md:w-16 md:h-16 object-contain" referrerPolicy="no-referrer" />
         <div>
-          <h1 className="text-3xl font-black uppercase italic tracking-tight">AI Assistant</h1>
-          <p className="text-[#FF4E00] text-[9px] font-black uppercase tracking-[0.2em] mt-0.5">Specialized Entertainment Agent</p>
+          <h1 className="text-xl md:text-3xl font-black uppercase italic tracking-tight">AI Assistant</h1>
+          <p className="text-[#FF4E00] text-[8px] md:text-[9px] font-black uppercase tracking-[0.2em] mt-0.5">Specialized Entertainment Agent</p>
         </div>
       </div>
 

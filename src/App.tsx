@@ -6,9 +6,10 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { useState, useEffect, createContext, useContext } from 'react';
-import { auth, db } from './lib/firebase';
+import { auth, db, handleFirestoreError, OperationType } from './lib/firebase';
 import { collection, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import Navbar from './components/Navbar';
+import AuthModal from './components/AuthModal';
 import Landing from './pages/Landing';
 import Home from './pages/Home';
 import Scan from './pages/Scan';
@@ -19,15 +20,23 @@ import Watchlist from './pages/Watchlist';
 interface AuthContextType {
   user: User | null;
   loading: boolean;
+  openAuthModal: () => void;
 }
 
-const AuthContext = createContext<AuthContextType>({ user: null, loading: true });
+const AuthContext = createContext<AuthContextType>({ 
+  user: null, 
+  loading: true,
+  openAuthModal: () => {} 
+});
 
 export const useAuth = () => useContext(AuthContext);
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+
+  const openAuthModal = () => setIsAuthModalOpen(true);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (u) => {
@@ -40,6 +49,7 @@ export default function App() {
   useEffect(() => {
     if (user && user.email) {
       const syncSubscriber = async () => {
+        const path = `subscribers/${user.uid}`;
         try {
           // Automated sync to local storage for agentic notifications via Substack export/API
           await setDoc(doc(db, 'subscribers', user.uid), {
@@ -48,7 +58,7 @@ export default function App() {
             subscribedAt: serverTimestamp()
           }, { merge: true });
         } catch (e) {
-          console.error('Failed to sync subscriber:', e);
+          handleFirestoreError(e, OperationType.WRITE, path);
         }
       };
       syncSubscriber();
@@ -56,7 +66,7 @@ export default function App() {
   }, [user]);
 
   return (
-    <AuthContext.Provider value={{ user, loading }}>
+    <AuthContext.Provider value={{ user, loading, openAuthModal }}>
       <Router>
         <div className="min-h-screen bg-[#0a0a0a] text-white font-sans selection:bg-[#FF4E00] selection:text-black selection:font-black relative overflow-x-hidden">
           <Navbar />
@@ -71,9 +81,11 @@ export default function App() {
             </Routes>
           </main>
 
+          <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
+
           {/* Visual Flare Elements */}
-          <div className="fixed -bottom-20 -left-20 w-96 h-96 bg-[#FF4E00] blur-[160px] opacity-10 rounded-full pointer-events-none z-0"></div>
-          <div className="fixed top-1/4 left-1/2 -translate-x-1/2 text-[150px] md:text-[300px] font-black opacity-[0.02] pointer-events-none uppercase tracking-tighter z-0 select-none">
+          <div className="fixed -bottom-20 -left-20 w-64 md:w-96 h-64 md:h-96 bg-[#FF4E00] blur-[100px] md:blur-[160px] opacity-10 rounded-full pointer-events-none z-0"></div>
+          <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[100px] md:text-[200px] lg:text-[300px] font-black opacity-[0.02] pointer-events-none uppercase tracking-tighter z-0 select-none">
             CIGHT
           </div>
         </div>
