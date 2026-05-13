@@ -20,6 +20,8 @@ interface DetectedMatch {
   isAnime: boolean;
   actors?: string[];
   streamingSuggestions?: string[];
+  seasons?: number;
+  franchise?: string;
   tmdbMatch?: any;
   animeMatch?: any;
   platformLinks?: {
@@ -478,15 +480,31 @@ export default function Scan() {
                         <h2 className="text-4xl font-black uppercase italic tracking-tighter leading-none italic">{matches[selectedMatchIndex]?.title}</h2>
                       </div>
 
-                      <div className="flex gap-8 items-center border-y border-white/5 py-4">
+                      <div className="flex flex-wrap gap-8 items-center border-y border-white/5 py-4">
                         <div className="space-y-0.5">
                           <p className="text-[9px] uppercase font-black tracking-widest text-white/40">Confidence</p>
                           <p className="text-2xl font-black tracking-tighter">{(matches[selectedMatchIndex]?.confidence * 100).toFixed(1)}%</p>
                         </div>
                         <div className="space-y-0.5">
                           <p className="text-[9px] uppercase font-black tracking-widest text-white/40">Type</p>
-                          <p className="text-[10px] font-black uppercase tracking-widest text-[#FF4E00]">{matches[selectedMatchIndex]?.type || 'Media'}</p>
+                          <p className="text-[10px] font-black uppercase tracking-widest text-[#FF4E00]">
+                            {matches[selectedMatchIndex]?.type === 'tv' ? 'Series' : matches[selectedMatchIndex]?.type || 'Media'}
+                          </p>
                         </div>
+                        {matches[selectedMatchIndex]?.seasons && (
+                          <div className="space-y-0.5">
+                            <p className="text-[9px] uppercase font-black tracking-widest text-white/40">Seasons</p>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-white">{matches[selectedMatchIndex].seasons} Seasons</p>
+                          </div>
+                        )}
+                        {matches[selectedMatchIndex]?.franchise && (
+                          <div className="space-y-0.5">
+                            <p className="text-[9px] uppercase font-black tracking-widest text-white/40">Franchise</p>
+                            <div className="inline-flex items-center gap-1.5 bg-[#FF4E00]/10 border border-[#FF4E00]/30 px-2 py-0.5">
+                              <span className="text-[8px] font-black uppercase tracking-widest text-[#FF4E00]">{matches[selectedMatchIndex].franchise} Saga</span>
+                            </div>
+                          </div>
+                        )}
                       </div>
 
                       {matches[selectedMatchIndex]?.actors && matches[selectedMatchIndex].actors!.length > 0 && (
@@ -721,7 +739,8 @@ export default function Scan() {
                               </Link>
                             ) : (
                               <div className="w-full py-1 bg-white/5 text-white/10 text-[5px] font-black uppercase text-center italic truncate">
-                                {item.matches?.[0]?.type || 'N/A'}
+                                {item.matches?.[0]?.type === 'tv' ? 'Series' : item.matches?.[0]?.type || 'N/A'}
+                                {item.matches?.[0]?.seasons ? ` (${item.matches[0].seasons}S)` : ''}
                               </div>
                             )}
                           </div>

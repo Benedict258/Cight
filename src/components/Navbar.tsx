@@ -10,6 +10,7 @@ export default function Navbar() {
   const { user, openAuthModal } = useAuth();
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const navigate = useNavigate();
 
@@ -19,6 +20,7 @@ export default function Navbar() {
       navigate(`/scan?q=${encodeURIComponent(searchQuery)}`);
       setSearchQuery('');
       setIsMobileMenuOpen(false);
+      setIsSearchOpen(false);
     }
   };
 
@@ -90,7 +92,15 @@ export default function Navbar() {
             ))}
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            {/* Mobile Search Toggle */}
+            <button 
+              onClick={() => setIsSearchOpen(!isSearchOpen)}
+              className="lg:hidden text-white/70 hover:text-[#FF4E00] transition-colors p-2"
+            >
+              <Search className="w-5 h-5" />
+            </button>
+
             {user ? (
               <div className="flex items-center gap-2 md:gap-3">
                 <div className="text-right hidden sm:block">
@@ -128,6 +138,39 @@ export default function Navbar() {
             )}
           </div>
         </div>
+
+        {/* Mobile Search Bar Overlay */}
+        <AnimatePresence>
+          {isSearchOpen && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="lg:hidden border-t border-white/10 bg-[#0A0A0A] overflow-hidden"
+            >
+              <div className="px-4 py-3">
+                <form onSubmit={handleSearch} className="relative group">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40 group-focus-within:text-[#FF4E00] transition-colors" />
+                  <input 
+                    type="text"
+                    autoFocus
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search entertainment..."
+                    className="w-full bg-white/5 border border-white/10 rounded-sm py-2.5 pl-10 pr-4 text-xs font-bold uppercase tracking-widest outline-none focus:border-[#FF4E00]/50 transition-all"
+                  />
+                  <button 
+                    type="button"
+                    onClick={() => setIsSearchOpen(false)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </form>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Mobile Navigation Menu */}
         <AnimatePresence>

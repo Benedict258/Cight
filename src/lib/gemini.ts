@@ -20,6 +20,8 @@ export async function identifyMovieFromMedia(base64Data: string, mimeType: strin
             - reason: Short explanation of why you think it's this.
             - actors: Top 3 actors, hosts, or recurring creators.
             - type: "movie", "tv", "anime", "podcast", "youtube", or "digital_series".
+            - seasons: Number of seasons (if it's a TV show/series).
+            - franchise: Name of the saga or collection it belongs to (e.g., "Marvel Cinematic Universe", "Fast & Furious").
             - isAnime: boolean.
             - streamingSuggestions: Array of likely streaming platforms where this is available.
             - platformLinks: Object with optional "spotify" or "youtube" directly-accessible URLs if it's a podcast or digital series.`
@@ -48,6 +50,8 @@ export async function identifyMovieFromMedia(base64Data: string, mimeType: strin
                 confidence: { type: Type.NUMBER },
                 reason: { type: Type.STRING },
                 type: { type: Type.STRING },
+                seasons: { type: Type.NUMBER },
+                franchise: { type: Type.STRING },
                 isAnime: { type: Type.BOOLEAN },
                 actors: { type: Type.ARRAY, items: { type: Type.STRING } },
                 streamingSuggestions: { type: Type.ARRAY, items: { type: Type.STRING } },
@@ -89,6 +93,8 @@ export async function identifyMovieFromText(description: string) {
             - reason: Short explanation.
             - actors: Top 3 people identified.
             - type: "movie", "tv", "anime", "podcast", "youtube", or "digital_series".
+            - seasons: Number of seasons (if it is a series).
+            - franchise: Name of the collection or saga.
             - isAnime: boolean.
             - streamingSuggestions: Array of likely streaming platforms.
             - platformLinks: Object with optional "spotify" or "youtube" directly-accessible URLs if it's a podcast or digital series.`
@@ -111,6 +117,8 @@ export async function identifyMovieFromText(description: string) {
                 confidence: { type: Type.NUMBER },
                 reason: { type: Type.STRING },
                 type: { type: Type.STRING },
+                seasons: { type: Type.NUMBER },
+                franchise: { type: Type.STRING },
                 isAnime: { type: Type.BOOLEAN },
                 actors: { type: Type.ARRAY, items: { type: Type.STRING } },
                 streamingSuggestions: { type: Type.ARRAY, items: { type: Type.STRING } },
