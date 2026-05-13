@@ -1,10 +1,11 @@
 import { motion } from 'motion/react';
 import { Play, Search, Zap, Shield, ArrowRight, Camera, MessageSquare, Bookmark } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../App';
 
 export default function Landing() {
   const { user, openAuthModal } = useAuth();
+  const navigate = useNavigate();
 
   const features = [
     {
@@ -70,14 +71,14 @@ export default function Landing() {
               transition={{ delay: 0.3 }}
               className="flex flex-col sm:flex-row gap-4 pt-4 w-full sm:w-auto px-4 sm:px-0"
             >
-              <Link 
-                to="/browse" 
+              <button 
+                onClick={() => user ? navigate('/browse') : navigate('/scan')}
                 className="group relative bg-[#FF4E00] text-black px-10 py-5 font-black uppercase italic text-sm tracking-widest flex items-center justify-center gap-3 overflow-hidden"
               >
                 <div className="absolute inset-0 bg-white translate-y-full group-hover:translate-y-0 transition-transform duration-500" />
                 <span className="relative z-10">Enter Platform</span>
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-2 transition-transform relative z-10" />
-              </Link>
+              </button>
               
               {!user && (
                 <button 
@@ -181,12 +182,12 @@ export default function Landing() {
           <h2 className="text-6xl md:text-8xl font-black uppercase italic tracking-tighter mb-12">
             Ready to dive <span className="text-[#FF4E00]">Deeper?</span>
           </h2>
-          <Link 
-            to="/browse" 
+          <button 
+            onClick={() => user ? navigate('/browse') : navigate('/scan')}
             className="inline-flex bg-white text-black px-12 py-6 font-black uppercase italic text-lg tracking-[0.2em] hover:bg-[#FF4E00] transition-colors"
           >
             Launch Browse Mode
-          </Link>
+          </button>
         </div>
         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-[800px] bg-[#FF4E00]/5 blur-[200px] pointer-events-none" />
       </section>

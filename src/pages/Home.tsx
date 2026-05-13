@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { getTrendingMovies, TMDB_IMAGE_BASE, getGenres, discoverMoviesByGenre } from '../lib/tmdb';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { Play, Star, TrendingUp, Info, ArrowRight, ChevronDown, ArrowLeft } from 'lucide-react';
+import { Play, Star, TrendingUp, Info, ArrowRight, ChevronDown, ArrowLeft, Search } from 'lucide-react';
 
 export default function Home() {
   const navigate = useNavigate();
@@ -11,6 +11,14 @@ export default function Home() {
   const [selectedGenre, setSelectedGenre] = useState<string>('all');
   const [loading, setLoading] = useState(true);
   const [fetchingMovies, setFetchingMovies] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      navigate(`/scan?q=${encodeURIComponent(searchQuery)}`);
+    }
+  };
 
   const [error, setError] = useState<string | null>(null);
 
@@ -115,20 +123,39 @@ export default function Home() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="flex flex-wrap gap-3 pt-2"
+            className="flex flex-col gap-6 pt-2"
           >
-            <Link 
-              to="/scan"
-              className="px-8 py-3.5 bg-white text-black font-black uppercase text-xs tracking-widest hover:scale-105 transition-transform"
-            >
-              Identify Scene
-            </Link>
-            <Link 
-              to="/chat"
-              className="px-8 py-3.5 border-2 border-white font-black uppercase text-xs tracking-widest hover:bg-white hover:text-black transition-all"
-            >
-              AI Assistant
-            </Link>
+            <form onSubmit={handleSearch} className="group relative max-w-lg">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40 group-focus-within:text-[#FF4E00] transition-colors" />
+              <input 
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search movies, podcasts, creators..."
+                className="w-full bg-white/5 border-2 border-white/10 px-12 py-4 text-xs font-black uppercase tracking-widest outline-none focus:border-[#FF4E00] focus:bg-white/10 transition-all rounded-none"
+              />
+              <button 
+                type="submit"
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-white text-black hover:bg-[#FF4E00] transition-colors"
+              >
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </form>
+
+            <div className="flex flex-wrap gap-3">
+              <Link 
+                to="/scan"
+                className="px-8 py-3.5 bg-white text-black font-black uppercase text-xs tracking-widest hover:scale-105 transition-transform"
+              >
+                Identify Scene
+              </Link>
+              <Link 
+                to="/chat"
+                className="px-8 py-3.5 border-2 border-white font-black uppercase text-xs tracking-widest hover:bg-white hover:text-black transition-all"
+              >
+                AI Assistant
+              </Link>
+            </div>
           </motion.div>
         </div>
 

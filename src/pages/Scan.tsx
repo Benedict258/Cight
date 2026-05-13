@@ -1,29 +1,114 @@
-import { useState, useRef } from 'react';
-import { Camera, Upload, Search, Link as LinkIcon, ArrowRight, Loader2, Info, AlertTriangle, ArrowLeft, Play } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { Camera, Upload, Search, Link as LinkIcon, ArrowRight, Loader2, Info, AlertTriangle, ArrowLeft, Play, Plus, Trash2, ExternalLink, MessageSquareText } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { identifyMovieFromMedia } from '../lib/gemini';
+import { identifyMovieFromMedia, identifyMovieFromText } from '../lib/gemini';
 import { traceMoeIdentify } from '../lib/tracemoe';
 import { searchAnime } from '../lib/anilist';
 import { searchMulti, TMDB_IMAGE_BASE } from '../lib/tmdb';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../App';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { cn } from '../lib/utils';
+
+interface DetectedMatch {
+  title: string;
+  year?: number;
+  confidence: number;
+  reason: string;
+  type: string;
+  isAnime: boolean;
+  actors?: string[];
+  streamingSuggestions?: string[];
+  tmdbMatch?: any;
+  animeMatch?: any;
+  platformLinks?: {
+    spotify?: string;
+    youtube?: string;
+  };
+}
+
+interface BatchItem {
+  id: string;
+  type: 'file' | 'text';
+  file?: File;
+  preview?: string;
+  text?: string;
+  status: 'idle' | 'processing' | 'done' | 'error';
+  matches: DetectedMatch[];
+}
 
 export default function Scan() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const [scanMode, setScanMode] = useState<'single' | 'batch'>('single');
+  
+  // Single Scan State
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [mimeType, setMimeType] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState<'upload' | 'scanning' | 'results'>('upload');
-  const [result, setResult] = useState<any>(null);
-  const [tmdbMatch, setTmdbMatch] = useState<any>(null);
-  const [animeMatch, setAnimeMatch] = useState<any>(null);
+  const [matches, setMatches] = useState<DetectedMatch[]>([]);
+  const [selectedMatchIndex, setSelectedMatchIndex] = useState(0);
   const [error, setError] = useState<string | null>(null);
+
+  const [batchItems, setBatchItems] = useState<BatchItem[]>(() => {
+    const saved = sessionStorage.getItem('cight_batch_items');
+    if (!saved) return [];
+    try {
+      const items = JSON.parse(saved);
+      return items.map((item: any) => ({
+        ...item,
+        matches: item.matches || []
+      }));
+    } catch (e) {
+      return [];
+    }
+  });
+  const [isBatchProcessing, setIsBatchProcessing] = useState(false);
+  
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const query = params.get('q');
+    if (query) {
+      handleQuerySearch(query);
+    }
+  }, [location.search]);
+
+  const handleQuerySearch = async (query: string) => {
+    setLoading(true);
+    setStep('scanning');
+    setError(null);
+    try {
+      const aiResponse = await identifyMovieFromText(query);
+      if (!aiResponse.matches || aiResponse.matches.length === 0) {
+        throw new Error("No matches found for your search.");
+      }
+      const enrichedMatches = await Promise.all(
+        aiResponse.matches.map((m: any) => enrichMatch(m))
+      );
+      setMatches(enrichedMatches);
+      setSelectedMatchIndex(0);
+      setStep('results');
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || "Search failed.");
+      setStep('upload');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    // Only save metadata, omit File objects which can't be stringified
+    const itemsToSave = batchItems.map(({ file, ...rest }) => rest);
+    sessionStorage.setItem('cight_batch_items', JSON.stringify(itemsToSave));
+  }, [batchItems]);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const batchFileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files?.[0];
@@ -37,6 +122,45 @@ export default function Scan() {
     }
   };
 
+  const enrichMatch = async (match: any, base64?: string) => {
+    let tmdbMatch = null;
+    let animeMatch = null;
+
+    try {
+      // 1. Specialized Anime Check
+      if (match.isAnime) {
+        if (base64) {
+          const traceResponse = await traceMoeIdentify(base64);
+          if (traceResponse?.result?.[0]) {
+            const animeSearch = await searchAnime(traceResponse.result[0].filename || match.title);
+            if (animeSearch?.Page?.media?.[0]) {
+              animeMatch = animeSearch.Page.media[0];
+            }
+          }
+        }
+        
+        if (!animeMatch) {
+          const animeSearch = await searchAnime(match.title);
+          if (animeSearch?.Page?.media?.[0]) {
+            animeMatch = animeSearch.Page.media[0];
+          }
+        }
+      }
+
+      // 2. TMDB Check (for movies/tv/anime)
+      if (['movie', 'tv', 'anime'].includes(match.type)) {
+        const multiSearch = await searchMulti(match.title, match.year);
+        if (multiSearch.results && multiSearch.results.length > 0) {
+          tmdbMatch = multiSearch.results[0];
+        }
+      }
+    } catch (e) {
+      console.warn("Metadata enrichment failed for match:", match.title, e);
+    }
+
+    return { ...match, tmdbMatch, animeMatch };
+  };
+
   const startScan = async () => {
     if (!preview || !mimeType) return;
     setLoading(true);
@@ -44,58 +168,45 @@ export default function Scan() {
     setError(null);
 
     try {
-      // 1. Identify with Gemini
       const base64 = preview.split(',')[1];
       const aiResponse = await identifyMovieFromMedia(base64, mimeType);
-      setResult(aiResponse);
-
-      // 2. Specialized Anime Check
-      if (aiResponse.isAnime) {
-        const traceResponse = await traceMoeIdentify(base64);
-        if (traceResponse?.result?.[0]) {
-          const animeSearch = await searchAnime(traceResponse.result[0].filename || aiResponse.title);
-          if (animeSearch?.Page?.media?.[0]) {
-             setAnimeMatch(animeSearch.Page.media[0]);
-          }
-        } else {
-          try {
-            const animeSearch = await searchAnime(aiResponse.title);
-            if (animeSearch?.Page?.media?.[0]) {
-               setAnimeMatch(animeSearch.Page.media[0]);
-            }
-          } catch(e) { console.warn("Anime search failed", e); }
-        }
+      
+      if (!aiResponse.matches || aiResponse.matches.length === 0) {
+        throw new Error("No matches found");
       }
 
-      // 3. Movie/TV Check (if not anime or as fallback)
-      if (!aiResponse.isAnime) {
-        const multiSearch = await searchMulti(aiResponse.title, aiResponse.year);
-        if (multiSearch.results && multiSearch.results.length > 0) {
-          setTmdbMatch(multiSearch.results[0]);
-          
-          if (user) {
-            const path = 'scans';
-            try {
-              await addDoc(collection(db, 'scans'), {
-                userId: user.uid,
-                mediaUrl: 'upload-placeholder',
-                resultId: multiSearch.results[0].id.toString(),
-                movieTitle: multiSearch.results[0].title || multiSearch.results[0].name,
-                mediaType: multiSearch.results[0].media_type,
-                confidence: aiResponse.confidence,
-                createdAt: serverTimestamp()
-              });
-            } catch (e) {
-              handleFirestoreError(e, OperationType.CREATE, path);
-            }
-          }
+      const enrichedMatches = await Promise.all(
+        aiResponse.matches.map((m: any) => enrichMatch(m, base64))
+      );
+
+      setMatches(enrichedMatches);
+      setSelectedMatchIndex(0);
+
+      // Log to Firestore if user is logged in (log top match)
+      const topMatch = enrichedMatches[0];
+      if (user && topMatch.tmdbMatch) {
+        const path = 'scans';
+        try {
+          await addDoc(collection(db, 'scans'), {
+            userId: user.uid,
+            mediaUrl: 'upload-placeholder',
+            resultId: topMatch.tmdbMatch.id.toString(),
+            movieTitle: topMatch.tmdbMatch.title || topMatch.tmdbMatch.name,
+            mediaType: topMatch.tmdbMatch.media_type,
+            confidence: topMatch.confidence,
+            createdAt: serverTimestamp()
+          });
+        } catch (e) {
+          handleFirestoreError(e, OperationType.CREATE, path);
         }
       }
       
       setStep('results');
     } catch (err: any) {
       console.error(err);
-      setError("Recognition failed. Please try a clearer image.");
+      setError(err.message?.includes('Forbidden') 
+        ? "AI Service Access Denied (403). Check API key." 
+        : "Recognition failed. Please try a clearer image.");
       setStep('upload');
     } finally {
       setLoading(false);
@@ -107,301 +218,535 @@ export default function Scan() {
     setFile(null);
     setPreview(null);
     setMimeType(null);
-    setResult(null);
-    setTmdbMatch(null);
-    setAnimeMatch(null);
+    setMatches([]);
+    setSelectedMatchIndex(0);
     setError(null);
+  };
+
+  // Batch Handlers
+  const addBatchFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    files.forEach(file => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setBatchItems(prev => [...prev, {
+          id: Math.random().toString(36).substr(2, 9),
+          type: 'file',
+          file,
+          preview: reader.result as string,
+          status: 'idle',
+          matches: []
+        }]);
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const addBatchText = () => {
+    setBatchItems(prev => [...prev, {
+      id: Math.random().toString(36).substr(2, 9),
+      type: 'text',
+      text: '',
+      status: 'idle',
+      matches: []
+    }]);
+  };
+
+  const removeBatchItem = (id: string) => {
+    setBatchItems(prev => prev.filter(item => item.id !== id));
+  };
+
+  const updateBatchText = (id: string, text: string) => {
+    setBatchItems(prev => prev.map(item => item.id === id ? { ...item, text } : item));
+  };
+
+  const processBatch = async () => {
+    if (isBatchProcessing) return;
+    setIsBatchProcessing(true);
+
+    const updatedItems = [...batchItems];
+    
+    for (let i = 0; i < updatedItems.length; i++) {
+      const item = updatedItems[i];
+      if (item.status === 'done' || item.status === 'processing') continue;
+
+      try {
+        setBatchItems(prev => prev.map(it => it.id === item.id ? { ...it, status: 'processing' } : it));
+
+        let aiResponse;
+        let base64;
+        if (item.type === 'file' && item.preview) {
+          base64 = item.preview.split(',')[1];
+          const mime = item.file?.type || 'image/jpeg';
+          aiResponse = await identifyMovieFromMedia(base64, mime);
+        } else if (item.type === 'text' && item.text) {
+          aiResponse = await identifyMovieFromText(item.text);
+        }
+
+        if (aiResponse && aiResponse.matches) {
+          const enrichedMatches = await Promise.all(
+            aiResponse.matches.map((m: any) => enrichMatch(m, base64))
+          );
+
+          setBatchItems(prev => prev.map(it => it.id === item.id ? { 
+            ...it, 
+            status: 'done', 
+            matches: enrichedMatches
+          } : it));
+        }
+      } catch (err: any) {
+        console.error("Batch item failed:", err);
+        setBatchItems(prev => prev.map(it => it.id === item.id ? { ...it, status: 'error' } : it));
+      }
+    }
+
+    setIsBatchProcessing(false);
+  };
+
+  const handleBack = () => {
+    if (step === 'results' || step === 'scanning') {
+      reset();
+    } else {
+      navigate(-1);
+    }
   };
 
   return (
     <div className="max-w-7xl mx-auto px-4 md:px-8 py-10">
-      <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-white/50 hover:text-[#FF4E00] transition-colors mb-8 group">
+      <button onClick={handleBack} className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-white/50 hover:text-[#FF4E00] transition-colors mb-8 group">
         <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
         <span>Back</span>
       </button>
-      <div className="flex items-center gap-4 mb-12">
-        <img src="/cight_logo.png" alt="" className="w-16 h-16 md:w-20 md:h-20 object-contain" referrerPolicy="no-referrer" />
-        <h1 className="text-2xl md:text-4xl font-black italic uppercase tracking-tighter">Scene Scanner</h1>
+      <div className="flex items-center justify-between mb-12">
+        <div className="flex items-center gap-4">
+          <img src="/cight_logo.png" alt="" className="w-16 h-16 md:w-20 md:h-20 object-contain" referrerPolicy="no-referrer" />
+          <h1 className="text-2xl md:text-4xl font-black italic uppercase tracking-tighter">Scene Scanner</h1>
+        </div>
+
+        <div className="flex bg-white/5 p-1 rounded-sm border border-white/5">
+          <button 
+            onClick={() => setScanMode('single')}
+            className={cn(
+              "px-6 py-2 text-[10px] font-black uppercase tracking-widest transition-all",
+              scanMode === 'single' ? "bg-white text-black" : "text-white/40 hover:text-white"
+            )}
+          >
+            Single Scene
+          </button>
+          <button 
+            onClick={() => setScanMode('batch')}
+            className={cn(
+              "px-6 py-2 text-[10px] font-black uppercase tracking-widest transition-all",
+              scanMode === 'batch' ? "bg-white text-black" : "text-white/40 hover:text-white"
+            )}
+          >
+            Batch Mode
+          </button>
+        </div>
       </div>
 
       <AnimatePresence mode="wait">
-        {step === 'upload' && (
-          <motion.div
-            key="upload"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="grid md:grid-cols-2 gap-8"
-          >
-            <div 
-              onClick={() => fileInputRef.current?.click()}
-              className="group border-2 border-white/5 bg-white/5 aspect-video flex flex-col items-center justify-center text-center cursor-pointer hover:border-[#FF4E00]/50 transition-all p-8 relative overflow-hidden"
-            >
-              <input 
-                type="file" 
-                ref={fileInputRef} 
-                onChange={handleFileChange} 
-                className="hidden" 
-                accept="image/*,video/*"
-              />
-              {preview ? (
-                mimeType?.startsWith('video/') ? (
-                  <video 
-                    src={preview} 
-                    className="absolute inset-0 w-full h-full object-cover opacity-40 grayscale group-hover:grayscale-0 transition-all duration-500"
-                    autoPlay
-                    muted
-                    loop
-                    playsInline
-                  />
-                ) : (
-                  <img src={preview} alt="Preview" className="absolute inset-0 w-full h-full object-cover opacity-40 grayscale group-hover:grayscale-0 transition-all duration-500" />
-                )
-              ) : null}
-              
-              <div className="relative z-10 space-y-3">
-                <div className="w-12 h-12 bg-white text-black flex items-center justify-center mx-auto rounded-sm group-hover:bg-[#FF4E00] transition-colors">
-                  <Upload className="w-6 h-6" />
-                </div>
-                <div className="space-y-0.5">
-                  <p className="text-xl font-black uppercase italic tracking-tighter">Upload Content</p>
-                  <p className="text-[9px] font-bold uppercase tracking-widest opacity-40 group-hover:opacity-100 transition-opacity">Select scene screenshot or short clip</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex flex-col justify-center space-y-8">
-              <div className="space-y-3">
-                <h2 className="text-3xl font-black uppercase tracking-tighter leading-none italic">
-                  IDENTIFY <br/>
-                  <span className="text-[#FF4E00]">EVERY FRAME.</span>
-                </h2>
-                <p className="opacity-60 font-medium text-sm">Our AI analyzes embeddings from movie frames and clips to pinpoint the exact title and metadata in seconds.</p>
-              </div>
-
-              {preview && (
-                <motion.button
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  onClick={startScan}
-                  className="w-fit px-10 py-4 bg-[#FF4E00] text-black font-black uppercase text-xs tracking-widest hover:scale-105 transition-transform"
+        {scanMode === 'single' ? (
+          <div key="single-mode">
+            {step === 'upload' && (
+              <motion.div
+                key="upload"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="grid md:grid-cols-2 gap-8"
+              >
+                <div 
+                  onClick={() => fileInputRef.current?.click()}
+                  className="group border-2 border-white/5 bg-white/5 aspect-video flex flex-col items-center justify-center text-center cursor-pointer hover:border-[#FF4E00]/50 transition-all p-8 relative overflow-hidden"
                 >
-                  Start Recognition
-                </motion.button>
-              )}
-            </div>
-          </motion.div>
-        )}
+                  <input 
+                    type="file" 
+                    ref={fileInputRef} 
+                    onChange={handleFileChange} 
+                    className="hidden" 
+                    accept="image/*,video/*"
+                  />
+                  {preview ? (
+                    mimeType?.startsWith('video/') ? (
+                      <video 
+                        src={preview} 
+                        className="absolute inset-0 w-full h-full object-cover opacity-40 grayscale group-hover:grayscale-0 transition-all duration-500"
+                        autoPlay
+                        muted
+                        loop
+                        playsInline
+                      />
+                    ) : (
+                      <img src={preview} alt="Preview" className="absolute inset-0 w-full h-full object-cover opacity-40 grayscale group-hover:grayscale-0 transition-all duration-500" />
+                    )
+                  ) : null}
+                  
+                  <div className="relative z-10 space-y-3">
+                    <div className="w-12 h-12 bg-white text-black flex items-center justify-center mx-auto rounded-sm group-hover:bg-[#FF4E00] transition-colors">
+                      <Upload className="w-6 h-6" />
+                    </div>
+                    <div className="space-y-0.5">
+                      <p className="text-xl font-black uppercase italic tracking-tighter">Upload Content</p>
+                      <p className="text-[9px] font-bold uppercase tracking-widest opacity-40 group-hover:opacity-100 transition-opacity">Select scene screenshot or short clip</p>
+                    </div>
+                  </div>
+                </div>
 
-        {step === 'scanning' && (
-          <motion.div
-            key="scanning"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="flex flex-col items-center justify-center py-32 space-y-10"
-          >
-            <div className="relative w-48 h-48 border-4 border-white/10 flex items-center justify-center">
-              <div className="absolute inset-0 border-4 border-[#FF4E00] animate-[spin_3s_linear_infinite] m-[-4px]" />
-              <Search className="w-16 h-16 text-[#FF4E00] animate-pulse" />
-              <div className="absolute top-2 left-2 bg-[#FF4E00] text-black text-[8px] font-black uppercase px-2 py-0.5 animate-bounce">Scanning...</div>
-            </div>
-            <div className="text-center space-y-4">
-              <h2 className="text-4xl font-black uppercase italic tracking-tighter italic">AI Search Active</h2>
-              <div className="inline-flex gap-2">
-                {[...Array(3)].map((_, i) => (
-                   <div key={i} className="w-3 h-3 bg-[#FF4E00] animate-pulse" style={{ animationDelay: `${i * 0.2}s` }} />
-                ))}
+                <div className="flex flex-col justify-center space-y-8">
+                  <div className="space-y-3">
+                    <h2 className="text-3xl font-black uppercase tracking-tighter leading-none italic">
+                      IDENTIFY <br/>
+                      <span className="text-[#FF4E00]">EVERY FRAME.</span>
+                    </h2>
+                    <p className="opacity-60 font-medium text-sm">Our AI analyzes embeddings from movie frames and clips to pinpoint the exact title and metadata in seconds.</p>
+                  </div>
+
+                  {preview && (
+                    <motion.button
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      onClick={startScan}
+                      className="w-fit px-10 py-4 bg-[#FF4E00] text-black font-black uppercase text-xs tracking-widest hover:scale-105 transition-transform"
+                    >
+                      {loading ? 'Processing...' : 'Start Recognition'}
+                    </motion.button>
+                  )}
+                </div>
+              </motion.div>
+            )}
+
+            {step === 'scanning' && (
+              <motion.div
+                key="scanning"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="flex flex-col items-center justify-center py-32 space-y-10"
+              >
+                <div className="relative w-48 h-48 border-4 border-white/10 flex items-center justify-center">
+                  <div className="absolute inset-0 border-4 border-[#FF4E00] animate-[spin_3s_linear_infinite] m-[-4px]" />
+                  <Search className="w-16 h-16 text-[#FF4E00] animate-pulse" />
+                  <div className="absolute top-2 left-2 bg-[#FF4E00] text-black text-[8px] font-black uppercase px-2 py-0.5 animate-bounce">Scanning...</div>
+                </div>
+                <div className="text-center space-y-4">
+                  <h2 className="text-4xl font-black uppercase italic tracking-tighter italic">AI Search Active</h2>
+                  <div className="inline-flex gap-2">
+                    {[...Array(3)].map((_, i) => (
+                      <div key={i} className="w-3 h-3 bg-[#FF4E00] animate-pulse" style={{ animationDelay: `${i * 0.2}s` }} />
+                    ))}
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {step === 'results' && (
+              <motion.div
+                key="results"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="grid md:grid-cols-2 gap-12"
+              >
+                {/* Left: Info Widget */}
+                <div className="space-y-6">
+                  {/* Match Selector */}
+                  {matches.length > 1 && (
+                    <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none">
+                      {matches.map((m, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => setSelectedMatchIndex(idx)}
+                          className={cn(
+                            "px-4 py-2 text-[8px] font-black uppercase tracking-widest border transition-all whitespace-nowrap",
+                            selectedMatchIndex === idx 
+                              ? "bg-white text-black border-white" 
+                              : "bg-white/5 text-white/40 border-white/5 hover:border-white/20"
+                          )}
+                        >
+                          Result {idx + 1}: {m.title}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="bg-[#151515] border border-white/10 rounded-sm p-8 relative">
+                    <div className="absolute -top-3 -right-3 bg-white text-black px-3 py-0.5 text-[9px] font-black uppercase tracking-tighter">
+                      Match Result
+                    </div>
+                    
+                    <div className="space-y-6">
+                      <div className="space-y-1.5">
+                        <h3 className="text-[10px] font-bold text-[#FF4E00] uppercase tracking-[0.2em]">Recognition Result</h3>
+                        <h2 className="text-4xl font-black uppercase italic tracking-tighter leading-none italic">{matches[selectedMatchIndex]?.title}</h2>
+                      </div>
+
+                      <div className="flex gap-8 items-center border-y border-white/5 py-4">
+                        <div className="space-y-0.5">
+                          <p className="text-[9px] uppercase font-black tracking-widest text-white/40">Confidence</p>
+                          <p className="text-2xl font-black tracking-tighter">{(matches[selectedMatchIndex]?.confidence * 100).toFixed(1)}%</p>
+                        </div>
+                        <div className="space-y-0.5">
+                          <p className="text-[9px] uppercase font-black tracking-widest text-white/40">Type</p>
+                          <p className="text-[10px] font-black uppercase tracking-widest text-[#FF4E00]">{matches[selectedMatchIndex]?.type || 'Media'}</p>
+                        </div>
+                      </div>
+
+                      {matches[selectedMatchIndex]?.actors && matches[selectedMatchIndex].actors!.length > 0 && (
+                        <div className="space-y-2">
+                          <p className="text-[9px] font-black uppercase tracking-widest text-white/40">Identified Talent</p>
+                          <div className="flex flex-wrap gap-2">
+                            {matches[selectedMatchIndex].actors!.map((actor: string) => (
+                              <span key={actor} className="px-2 py-1 bg-white/5 border border-white/10 text-[10px] font-bold uppercase">{actor}</span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="space-y-3">
+                        <p className="text-base font-black uppercase italic text-white/60">AI Intelligence Report</p>
+                        <p className="opacity-60 text-xs leading-relaxed">{matches[selectedMatchIndex]?.reason}</p>
+                      </div>
+
+                      <div className="flex gap-3 pt-4">
+                        <button onClick={reset} className="px-6 py-3 border-2 border-white/20 hover:border-white text-[10px] font-black uppercase tracking-widest transition-all">Reset</button>
+                        {matches[selectedMatchIndex]?.tmdbMatch && (
+                          <Link 
+                            to={`/movie/${matches[selectedMatchIndex].tmdbMatch.id}?type=${matches[selectedMatchIndex].tmdbMatch.media_type || 'movie'}`}
+                            className="flex-1 bg-white text-black px-6 py-3 text-[10px] font-black uppercase tracking-widest text-center hover:bg-[#FF4E00] transition-colors flex items-center justify-center gap-2"
+                          >
+                            Full Details <ExternalLink className="w-3 h-3" />
+                          </Link>
+                        )}
+                        {matches[selectedMatchIndex]?.platformLinks?.spotify && (
+                          <a 
+                            href={matches[selectedMatchIndex].platformLinks!.spotify}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex-1 bg-[#1DB954] text-black px-6 py-3 text-[10px] font-black uppercase tracking-widest text-center hover:bg-white transition-colors flex items-center justify-center gap-2"
+                          >
+                            Spotify <ExternalLink className="w-3 h-3" />
+                          </a>
+                        )}
+                        {matches[selectedMatchIndex]?.platformLinks?.youtube && (
+                          <a 
+                            href={matches[selectedMatchIndex].platformLinks!.youtube}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex-1 bg-[#FF0000] text-white px-6 py-3 text-[10px] font-black uppercase tracking-widest text-center hover:bg-white hover:text-black transition-colors flex items-center justify-center gap-2"
+                          >
+                            YouTube <ExternalLink className="w-3 h-3" />
+                          </a>
+                        )}
+                        {['podcast', 'youtube', 'digital_series', 'digital_content'].includes(matches[selectedMatchIndex]?.type) && 
+                         !matches[selectedMatchIndex]?.tmdbMatch && 
+                         !matches[selectedMatchIndex]?.platformLinks?.spotify && 
+                         !matches[selectedMatchIndex]?.platformLinks?.youtube && (
+                          <div className="flex-1 bg-white/5 border border-white/10 text-white/60 px-6 py-3 text-[9px] font-black uppercase tracking-widest flex items-center justify-center italic gap-2">
+                             Digital Asset Recognized <Info className="w-3 h-3" />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right: Poster */}
+                <div className="space-y-8">
+                  {matches[selectedMatchIndex]?.tmdbMatch ? (
+                    <div className="relative border-4 border-white/5 p-3 bg-white/5 group">
+                      <img 
+                        src={`${TMDB_IMAGE_BASE}${matches[selectedMatchIndex].tmdbMatch.poster_path}`} 
+                        className="w-full h-auto rounded-sm grayscale group-hover:grayscale-0 transition-all duration-700" 
+                        alt="Poster" 
+                      />
+                      <div className="absolute top-6 left-6 bg-[#FF4E00] text-black font-black uppercase px-3 py-1.5 text-xs tracking-tighter italic">
+                        {matches[selectedMatchIndex].tmdbMatch.media_type || matches[selectedMatchIndex].type}
+                      </div>
+                    </div>
+                  ) : matches[selectedMatchIndex]?.animeMatch ? (
+                    <div className="relative border-4 border-white/5 p-3 bg-white/5 group">
+                      <img 
+                        src={matches[selectedMatchIndex].animeMatch.coverImage.large} 
+                        className="w-full h-auto rounded-sm grayscale group-hover:grayscale-0 transition-all duration-700" 
+                        alt="Poster" 
+                      />
+                      <div className="absolute top-6 left-6 bg-[#FF4E00] text-black font-black uppercase px-3 py-1.5 text-xs tracking-tighter italic">
+                        Anime Result
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="aspect-[2/3] bg-zinc-900 border-2 border-dashed border-white/10 flex items-center justify-center p-8 text-center italic font-black text-xl uppercase opacity-20">
+                      Metadata Not Linked
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </div>
+        ) : (
+          <div key="batch-mode" className="space-y-12">
+            {/* Batch Input Zone - Replicating Single Scanner Aesthetic */}
+            <div className="grid md:grid-cols-2 gap-8">
+              <div 
+                onClick={() => batchFileInputRef.current?.click()}
+                className="group border-2 border-white/5 bg-white/5 aspect-video flex flex-col items-center justify-center text-center cursor-pointer hover:border-[#FF4E00]/50 transition-all p-8 relative overflow-hidden"
+              >
+                <input 
+                  type="file" 
+                  ref={batchFileInputRef} 
+                  onChange={addBatchFile} 
+                  className="hidden" 
+                  multiple
+                  accept="image/*"
+                />
+                
+                <div className="relative z-10 space-y-3">
+                  <div className="w-12 h-12 bg-white text-black flex items-center justify-center mx-auto rounded-sm group-hover:bg-[#FF4E00] transition-colors">
+                    <Plus className="w-6 h-6" />
+                  </div>
+                  <div className="space-y-0.5">
+                    <p className="text-xl font-black uppercase italic tracking-tighter">Add to Batch</p>
+                    <p className="text-[9px] font-bold uppercase tracking-widest opacity-40 group-hover:opacity-100 transition-opacity">Select multiple scene screenshots</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col justify-center space-y-8">
+                <div className="space-y-3">
+                  <h2 className="text-3xl font-black uppercase tracking-tighter leading-none italic">
+                    MASS <br/>
+                    <span className="text-[#FF4E00]">IDENTIFICATION.</span>
+                  </h2>
+                  <p className="opacity-60 font-medium text-sm">Add multiple frames or descriptions. Our system will process them in sequence using the Gemini model.</p>
+                </div>
+
+                <div className="flex gap-4">
+                  <button 
+                    onClick={addBatchText}
+                    className="px-6 py-4 border-2 border-white/10 hover:border-white text-[10px] font-black uppercase tracking-widest transition-all"
+                  >
+                    Add Description
+                  </button>
+                  {batchItems.length > 0 && (
+                    <button 
+                      onClick={processBatch}
+                      disabled={isBatchProcessing}
+                      className="px-8 py-4 bg-[#FF4E00] text-black font-black uppercase text-[10px] tracking-widest hover:scale-105 transition-transform disabled:opacity-50 flex items-center gap-2"
+                    >
+                      {isBatchProcessing ? (
+                        <>Processing <Loader2 className="w-4 h-4 animate-spin" /></>
+                      ) : (
+                        <>Run Analysis ({batchItems.filter(i => i.status === 'idle').length})</>
+                      )}
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
-          </motion.div>
-        )}
 
-        {step === 'results' && (
-          <motion.div
-            key="results"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="grid md:grid-cols-2 gap-12"
-          >
-            {/* Left: Info Widget */}
-            <div className="bg-[#151515] border border-white/10 rounded-sm p-8 relative">
-              <div className="absolute -top-3 -right-3 bg-white text-black px-3 py-0.5 text-[9px] font-black uppercase tracking-tighter">
-                Match Result
+            {/* Batch Results Grid */}
+            <div className="space-y-6">
+              <div className="flex items-center justify-between border-b border-white/5 pb-4">
+                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40">Queue & Results</h3>
+                {batchItems.length > 0 && (
+                  <button 
+                    onClick={() => setBatchItems([])}
+                    className="text-[9px] font-black uppercase tracking-widest text-red-500/50 hover:text-red-500 transition-colors"
+                  >
+                    Clear All
+                  </button>
+                )}
               </div>
               
-              <div className="space-y-6">
-                <div className="space-y-1.5">
-                  <h3 className="text-[10px] font-bold text-[#FF4E00] uppercase tracking-[0.2em]">Recognition Result</h3>
-                  <h2 className="text-4xl font-black uppercase italic tracking-tighter leading-none italic">{result?.title}</h2>
-                </div>
+              <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 gap-2">
+                <AnimatePresence mode="popLayout">
+                  {batchItems.map((item) => (
+                    <motion.div
+                      layout
+                      key={item.id}
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.8 }}
+                      className="group relative bg-[#151515] border border-white/5 rounded-sm overflow-hidden flex flex-col"
+                    >
+                      <button 
+                        onClick={() => removeBatchItem(item.id)}
+                        className="absolute top-0.5 right-0.5 z-20 p-0.5 bg-black/60 text-white/40 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                      >
+                        <Trash2 className="w-2.5 h-2.5" />
+                      </button>
 
-                <div className="flex gap-8 items-center border-y border-white/5 py-4">
-                  <div className="space-y-0.5">
-                    <p className="text-[9px] uppercase font-black tracking-widest text-white/40">Confidence</p>
-                    <p className="text-2xl font-black tracking-tighter">{(result?.confidence * 100).toFixed(1)}%</p>
-                  </div>
-                  <div className="space-y-0.5">
-                    <p className="text-[9px] uppercase font-black tracking-widest text-white/40">Type</p>
-                    <p className="text-[10px] font-black uppercase tracking-widest text-[#FF4E00]">{result?.type || 'Media'}</p>
-                  </div>
-                </div>
+                      <div className="aspect-square bg-black relative shrink-0">
+                        {item.type === 'file' ? (
+                          <img src={item.preview} className="w-full h-full object-cover opacity-40 group-hover:opacity-100 transition-opacity" alt="" />
+                        ) : (
+                          <div className="w-full h-full p-1 flex items-center justify-center bg-zinc-900/50">
+                            <MessageSquareText className="w-3 h-3 text-[#FF4E00]/40" />
+                          </div>
+                        )}
+                        
+                        {item.status === 'processing' && (
+                          <div className="absolute inset-0 bg-black/80 flex items-center justify-center">
+                            <Loader2 className="w-3 h-3 animate-spin text-[#FF4E00]" />
+                          </div>
+                        )}
 
-                {result?.actors && result.actors.length > 0 && (
-                  <div className="space-y-2">
-                    <p className="text-[9px] font-black uppercase tracking-widest text-white/40">Identified Talent</p>
-                    <div className="flex flex-wrap gap-2">
-                      {result.actors.map((actor: string) => (
-                        <span key={actor} className="px-2 py-1 bg-white/5 border border-white/10 text-[10px] font-bold uppercase">{actor}</span>
-                      ))}
+                        {item.status === 'done' && (
+                          <div className="absolute top-0.5 left-0.5">
+                            <div className="px-1 py-0 bg-[#FF4E00] text-black text-[5px] font-black uppercase tracking-tighter italic">
+                              {((item.matches?.[0]?.confidence || 0) * 100).toFixed(0)}%
+                            </div>
+                          </div>
+                        )}
+
+                        {item.status === 'error' && (
+                          <div className="absolute inset-0 bg-red-500/20 flex items-center justify-center">
+                            <AlertTriangle className="w-3 h-3 text-red-500" />
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="p-1 flex-1 flex flex-col min-h-0">
+                        {item.status === 'done' ? (
+                          <div className="flex-1 flex flex-col justify-between gap-1 overflow-hidden">
+                            <p className="text-[7px] font-black uppercase tracking-tighter leading-none group-hover:text-[#FF4E00] transition-colors truncate">
+                              {item.matches?.[0]?.title}
+                              {item.matches && item.matches.length > 1 && ` (+${item.matches.length - 1})`}
+                            </p>
+                            
+                            {item.matches?.[0]?.tmdbMatch ? (
+                              <Link 
+                                to={`/movie/${item.matches[0].tmdbMatch.id}?type=${item.matches[0].tmdbMatch.media_type || 'movie'}`}
+                                className="w-full flex items-center justify-center py-1 bg-white text-black text-[5px] font-black uppercase tracking-widest hover:bg-[#FF4E00] transition-colors"
+                              >
+                                VIEW
+                              </Link>
+                            ) : (
+                              <div className="w-full py-1 bg-white/5 text-white/10 text-[5px] font-black uppercase text-center italic truncate">
+                                {item.matches?.[0]?.type || 'N/A'}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="h-1 bg-white/5 w-full rounded-full animate-pulse" />
+                        )}
+                      </div>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+
+                {batchItems.length === 0 && (
+                  <div className="col-span-full py-32 border-2 border-dashed border-white/5 flex flex-col items-center justify-center text-center space-y-4">
+                    <div className="w-16 h-16 bg-white/5 flex items-center justify-center rounded-full">
+                      <Plus className="w-8 h-8 text-white/10" />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-2xl font-black uppercase italic tracking-tighter opacity-20">No Items Queued</p>
+                      <p className="text-[10px] font-bold uppercase tracking-widest opacity-10">Select images or add descriptions to begin scanning</p>
                     </div>
                   </div>
                 )}
-
-                {result?.streamingSuggestions && result.streamingSuggestions.length > 0 && (
-                  <div className="space-y-2 text-left">
-                    <p className="text-[9px] font-black uppercase tracking-widest text-white/40">Where to Watch (suggested)</p>
-                    <div className="flex flex-wrap gap-2">
-                      {result.streamingSuggestions.slice(0, 3).map((platform: string) => (
-                        <span key={platform} className="px-2 py-1 bg-[#FF4E00]/10 border border-[#FF4E00]/20 text-[#FF4E00] text-[10px] font-black uppercase tracking-tighter">{platform}</span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                <div className="space-y-3">
-                   <p className="text-base font-black uppercase italic text-white/60">AI Intelligence Report</p>
-                   <p className="opacity-60 text-xs leading-relaxed">{result?.reason}</p>
-                </div>
-
-                {/* Custom Where to Watch for Scan Results */}
-                <div className="space-y-4 pt-4 border-t border-white/5">
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#FF4E00]">Where to Watch</p>
-                  <div className="flex flex-wrap gap-4">
-                    <a 
-                      href={`https://moviebox.site/search?q=${encodeURIComponent(result?.title)}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="group relative"
-                    >
-                      <img 
-                        src="/moviebox.svg" 
-                        alt="MOVIEBOX"
-                        className="w-10 h-10 rounded-sm filter grayscale hover:grayscale-0 transition-all border border-white/10 bg-zinc-900 object-contain p-1"
-                      />
-                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-1 bg-white text-black text-[8px] font-black uppercase tracking-tighter whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-[100]">
-                        MOVIEBOX
-                      </div>
-                    </a>
-
-                    <a 
-                      href={`https://www.youtube.com/results?search_query=${encodeURIComponent(result?.title + ' full movie')}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="group relative"
-                    >
-                      <img 
-                        src="https://upload.wikimedia.org/wikipedia/commons/e/ef/Youtube_logo.png" 
-                        alt="YouTube"
-                        className="w-10 h-10 rounded-sm filter grayscale hover:grayscale-0 transition-all border border-white/10 bg-zinc-900 object-contain p-1"
-                      />
-                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-1 bg-white text-black text-[8px] font-black uppercase tracking-tighter whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-[100]">
-                        YouTube
-                      </div>
-                    </a>
-
-                    {(result?.isAnime || tmdbMatch?.genre_ids?.includes(16)) && (
-                      <a 
-                        href={`https://animepahe.com/anime?q=${encodeURIComponent(result?.title)}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="group relative"
-                      >
-                        <img 
-                          src="/animepahe.svg" 
-                          alt="AnimePahe"
-                          className="w-10 h-10 rounded-sm filter grayscale hover:grayscale-0 transition-all border border-white/10 bg-zinc-900 object-contain p-1"
-                        />
-                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-1 bg-white text-black text-[8px] font-black uppercase tracking-tighter whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-[100]">
-                          AnimePahe
-                        </div>
-                      </a>
-                    )}
-
-                    {(result?.isKDrama || tmdbMatch?.origin_country?.includes('KR')) && (
-                      <a 
-                        href={`https://nkiri.com/?s=${encodeURIComponent(result?.title)}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="group relative"
-                      >
-                        <img 
-                          src="/nkiri.png" 
-                          alt="Nkiri"
-                          className="w-10 h-10 rounded-sm filter grayscale hover:grayscale-0 transition-all border border-white/10 bg-zinc-900 object-contain p-1"
-                        />
-                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-1 bg-white text-black text-[8px] font-black uppercase tracking-tighter whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-[100]">
-                          Nkiri
-                        </div>
-                      </a>
-                    )}
-                  </div>
-
-                  <div className="pt-4 flex flex-wrap gap-3">
-                    <a 
-                      href={`https://vidsrc.to/embed/movie/${tmdbMatch?.id || 'search?q=' + encodeURIComponent(result?.title)}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex items-center gap-2 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-[9px] font-black uppercase tracking-widest text-white/70 hover:text-white transition-all border border-white/5 rounded-sm"
-                    >
-                      <Play className="w-3 h-3 fill-current" /> Stream Server 1
-                    </a>
-                  </div>
-                </div>
-
-                <div className="flex gap-3 pt-4">
-                  <button onClick={reset} className="px-6 py-3 border-2 border-white/20 hover:border-white text-[10px] font-black uppercase tracking-widest transition-all">Reset</button>
-                  {tmdbMatch && (
-                    <Link to={`/movie/${tmdbMatch.id}?type=${tmdbMatch.media_type || 'movie'}`} className="flex-1 bg-white text-black px-6 py-3 text-[10px] font-black uppercase tracking-widest text-center hover:bg-[#FF4E00] transition-colors">
-                      Full Details
-                    </Link>
-                  )}
-                  {animeMatch && (
-                    <a href={`https://anilist.co/anime/${animeMatch.id}`} target="_blank" rel="noreferrer" className="flex-1 bg-white text-black px-6 py-3 text-[10px] font-black uppercase tracking-widest text-center hover:bg-[#FF4E00] transition-colors">
-                      AniList Info
-                    </a>
-                  )}
-                </div>
               </div>
             </div>
-
-            {/* Right: Poster/Metadata */}
-            <div className="space-y-8">
-              {tmdbMatch ? (
-                <div className="relative border-4 border-white/5 p-3 bg-white/5 group">
-                  <img src={`${TMDB_IMAGE_BASE}${tmdbMatch.poster_path}`} className="w-full h-auto rounded-sm grayscale group-hover:grayscale-0 transition-all duration-700" alt="Poster" />
-                  <div className="absolute top-6 left-6 bg-[#FF4E00] text-black font-black uppercase px-3 py-1.5 text-xs tracking-tighter italic">
-                    {tmdbMatch.media_type || 'Media'}
-                  </div>
-                  <div className="absolute top-16 left-6 bg-white text-black font-black uppercase px-3 py-1.5 text-xs tracking-tighter italic">
-                    {(tmdbMatch.release_date || tmdbMatch.first_air_date)?.split('-')[0]}
-                  </div>
-                </div>
-              ) : animeMatch ? (
-                <div className="relative border-4 border-white/5 p-3 bg-white/5 group">
-                  <img src={animeMatch.coverImage.extraLarge} className="w-full h-auto rounded-sm grayscale group-hover:grayscale-0 transition-all duration-700" alt="Anime Poster" />
-                  <div className="absolute top-6 left-6 bg-[#FF4E00] text-black font-black uppercase px-3 py-1.5 text-xs tracking-tighter italic">
-                    {animeMatch.startDate.year}
-                  </div>
-                  <div className="mt-4 p-4 bg-black/40 border border-white/5 text-[10px] uppercase font-bold text-white/60">
-                    {animeMatch.genres.slice(0, 3).join(' • ')}
-                  </div>
-                </div>
-              ) : (
-                <div className="aspect-[2/3] bg-zinc-900 border-2 border-dashed border-white/10 flex items-center justify-center p-8 text-center italic font-black text-xl uppercase opacity-20">
-                  Metadata Missing
-                </div>
-              )}
-            </div>
-          </motion.div>
+          </div>
         )}
       </AnimatePresence>
     </div>

@@ -1,4 +1,4 @@
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Camera, Home, MessageSquare, Bookmark, User as UserIcon, LogOut, Search, Menu, X } from 'lucide-react';
 import { useAuth } from '../App';
 import { logout } from '../lib/firebase';
@@ -10,6 +10,17 @@ export default function Navbar() {
   const { user, openAuthModal } = useAuth();
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const navigate = useNavigate();
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      navigate(`/scan?q=${encodeURIComponent(searchQuery)}`);
+      setSearchQuery('');
+      setIsMobileMenuOpen(false);
+    }
+  };
 
   const navItems = [
     { name: 'Discover', path: '/browse', icon: Home },
@@ -35,15 +46,33 @@ export default function Navbar() {
             </button>
 
             <Link to="/" className="flex items-center gap-1.5 md:gap-2 group">
-              <img 
-                src="/cight_logo.png" 
-                alt="CIGHT Logo" 
-                className="w-10 h-10 md:w-12 md:h-12 object-contain group-hover:scale-110 transition-transform filter drop-shadow-[0_0_8px_rgba(255,78,0,0.2)]"
-                referrerPolicy="no-referrer"
-              />
-              <span className="text-lg md:text-xl font-black tracking-tighter uppercase italic">Cight</span>
+              <div className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center">
+                <img 
+                  src="/cight_logo.png" 
+                  alt="CIGHT" 
+                  className="w-full h-full object-contain group-hover:scale-110 transition-transform filter drop-shadow-[0_0_8px_rgba(255,78,0,0.4)]"
+                  referrerPolicy="no-referrer"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.src = 'https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/camera.svg';
+                    target.classList.add('invert');
+                  }}
+                />
+              </div>
+              <span className="text-lg md:text-xl font-black tracking-tighter uppercase italic text-white">Cight</span>
             </Link>
           </div>
+
+          <form onSubmit={handleSearch} className="hidden lg:flex flex-1 max-w-sm mx-10 relative group">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/40 group-focus-within:text-[#FF4E00] transition-colors" />
+            <input 
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search entertainment..."
+              className="w-full bg-white/5 border border-white/10 rounded-sm py-1.5 pl-10 pr-4 text-[10px] font-bold uppercase tracking-widest outline-none focus:border-[#FF4E00]/50 transition-all"
+            />
+          </form>
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-8">
@@ -109,8 +138,20 @@ export default function Navbar() {
               exit={{ height: 0, opacity: 0 }}
               className="md:hidden border-t border-white/10 bg-[#0A0A0A]/95 overflow-hidden"
             >
-              <div className="px-6 py-8 space-y-6">
-                {navItems.map((item) => (
+              <div className="px-6 py-8 space-y-8">
+                <form onSubmit={handleSearch} className="relative group">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40 group-focus-within:text-[#FF4E00] transition-colors" />
+                  <input 
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search anything..."
+                    className="w-full bg-white/5 border border-white/10 rounded-sm py-3 pl-12 pr-4 text-[10px] font-bold uppercase tracking-widest outline-none focus:border-[#FF4E00]/50 transition-all"
+                  />
+                </form>
+
+                <div className="space-y-6">
+                  {navItems.map((item) => (
                   <Link
                     key={item.path}
                     to={item.path}
@@ -124,6 +165,7 @@ export default function Navbar() {
                     {item.name}
                   </Link>
                 ))}
+                </div>
               </div>
             </motion.div>
           )}

@@ -71,14 +71,20 @@ export default function App() {
         <div className="min-h-screen bg-[#0a0a0a] text-white font-sans selection:bg-[#FF4E00] selection:text-black selection:font-black relative overflow-x-hidden">
           <Navbar />
           <main className="pt-20">
-            <Routes>
-              <Route path="/" element={<Landing />} />
-              <Route path="/browse" element={<Home />} />
-              <Route path="/scan" element={<Scan />} />
-              <Route path="/movie/:id" element={<Movie />} />
-              <Route path="/chat" element={<Chat />} />
-              <Route path="/watchlist" element={user ? <Watchlist /> : <Navigate to="/" />} />
-            </Routes>
+            {loading ? (
+              <div className="min-h-screen flex items-center justify-center">
+                <div className="w-12 h-12 border-4 border-white/10 border-t-[#FF4E00] rounded-full animate-spin" />
+              </div>
+            ) : (
+              <Routes>
+                <Route path="/" element={user ? <Navigate to="/browse" /> : <Landing />} />
+                <Route path="/browse" element={<Home />} />
+                <Route path="/scan" element={<Scan />} />
+                <Route path="/movie/:id" element={<Movie />} />
+                <Route path="/chat" element={user ? <Chat /> : <Navigate to="/" />} />
+                <Route path="/watchlist" element={user ? <Watchlist /> : <Navigate to="/" />} />
+              </Routes>
+            )}
           </main>
 
           <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />

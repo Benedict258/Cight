@@ -81,6 +81,7 @@
         "userName": { "type": "string" },
         "movieId": { "type": "string" },
         "content": { "type": "string" },
+        "parentId": { "type": "string", "description": "ID of the parent comment if this is a reply" },
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["userId", "movieId", "content", "createdAt"]

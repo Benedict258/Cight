@@ -73,14 +73,17 @@ service cloud.firestore {
              data.userId == request.auth.uid &&
              data.content is string &&
              data.content.size() <= 2000 &&
-             (data.createdAt == request.time || data.createdAt == resource.data.createdAt);
+             data.movieId is string &&
+             data.createdAt == request.time &&
+             (!data.keys().contains('parentId') || (data.parentId is string && data.parentId.size() <= 128));
     }
 
     function isValidRating(data) {
       return data.keys().hasAll(['userId', 'movieId', 'type', 'updatedAt']) &&
              data.userId == request.auth.uid &&
+             data.movieId is string &&
              data.type in ['like', 'dislike'] &&
-             (data.updatedAt == request.time || data.updatedAt == resource.data.updatedAt);
+             data.updatedAt == request.time;
     }
 
     // 1. Entity Matches
@@ -118,13 +121,15 @@ service cloud.firestore {
     }
 
     match /comments/{commentId} {
-      allow read: if true;
+      allow list: if true;
+      allow get: if true;
       allow create: if isSignedIn() && isValidComment(incoming());
       allow delete: if isSignedIn() && existing().userId == request.auth.uid;
     }
 
     match /ratings/{ratingId} {
-      allow read: if true;
+      allow list: if true;
+      allow get: if true;
       allow create: if isSignedIn() && isValidRating(incoming()) && ratingId == request.auth.uid + "_" + incoming().movieId;
       allow update: if isSignedIn() && isValidRating(incoming()) && existing().userId == request.auth.uid && ratingId == request.auth.uid + "_" + incoming().movieId;
       allow delete: if isSignedIn() && existing().userId == request.auth.uid;

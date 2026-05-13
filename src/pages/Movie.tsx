@@ -5,7 +5,7 @@ import { Star, Clock, Calendar, Bookmark, Share2, ArrowLeft, Play, Info, ThumbsU
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../App';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
-import { collection, addDoc, query, where, getDocs, deleteDoc, doc, serverTimestamp, setDoc, orderBy, onSnapshot, limit } from 'firebase/firestore';
+import { collection, addDoc, query, where, getDocs, deleteDoc, doc, serverTimestamp, setDoc, orderBy, onSnapshot, limit, getDoc } from 'firebase/firestore';
 import { cn } from '../lib/utils';
 
 export default function Movie() {
@@ -18,11 +18,14 @@ export default function Movie() {
   const [loading, setLoading] = useState(true);
   const [isSaved, setIsSaved] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [showTrailer, setShowTrailer] = useState(false);
 
   // Comments State
   const [comments, setComments] = useState<any[]>([]);
   const [newComment, setNewComment] = useState('');
   const [postingComment, setPostingComment] = useState(false);
+  const [replyTo, setReplyTo] = useState<string | null>(null);
+  const [replyComment, setReplyComment] = useState('');
 
   // Ratings State
   const [userRating, setUserRating] = useState<'like' | 'dislike' | null>(null);
@@ -49,11 +52,15 @@ export default function Movie() {
 
       // Fetch user rating
       const ratingDocRef = doc(db, 'ratings', `${user.uid}_${id}`);
-      getDocs(query(collection(db, 'ratings'), where('userId', '==', user.uid), where('movieId', '==', id)))
+      getDoc(ratingDocRef)
         .then(snap => {
-          if (!snap.empty) {
-            setUserRating(snap.docs[0].data().type);
+          if (snap.exists()) {
+            setUserRating(snap.data().type);
           }
+        })
+        .catch(err => {
+          // If doc doesn't exist or permissions fail (though read is allowed in rules)
+          console.warn('Rating fetch failed:', err);
         });
     }
 
@@ -146,9 +153,10 @@ export default function Movie() {
     }
   };
 
-  const handlePostComment = async (e: React.FormEvent) => {
+  const handlePostComment = async (e: React.FormEvent, parentId?: string) => {
     e.preventDefault();
-    if (!user || !newComment.trim() || postingComment) return;
+    const content = parentId ? replyComment : newComment;
+    if (!user || !content.trim() || postingComment) return;
 
     setPostingComment(true);
     try {
@@ -156,10 +164,16 @@ export default function Movie() {
         userId: user.uid,
         userName: user.displayName || user.email?.split('@')[0] || 'User',
         movieId: id,
-        content: newComment.trim(),
+        content: content.trim(),
+        parentId: parentId || null,
         createdAt: serverTimestamp()
       });
-      setNewComment('');
+      if (parentId) {
+        setReplyComment('');
+        setReplyTo(null);
+      } else {
+        setNewComment('');
+      }
     } catch (e) {
       handleFirestoreError(e, OperationType.CREATE, 'comments');
     } finally {
@@ -217,10 +231,52 @@ export default function Movie() {
     }
   ];
 
+  const handleBack = () => {
+    if (window.history.length > 2) {
+      navigate(-1);
+    } else {
+      navigate('/scan');
+    }
+  };
+
   return (
     <div className="min-h-screen pb-20">
+      <AnimatePresence>
+        {showTrailer && trailer && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowTrailer(false)}
+              className="absolute inset-0 bg-black/95 backdrop-blur-xl"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-5xl aspect-video bg-black shadow-2xl border border-white/10"
+            >
+              <button 
+                onClick={() => setShowTrailer(false)}
+                className="absolute -top-12 right-0 text-white/50 hover:text-white transition-colors flex items-center gap-2 text-[10px] font-black uppercase tracking-widest"
+              >
+                Close Trailer <Trash2 className="w-4 h-4 rotate-45" />
+              </button>
+              <iframe
+                src={`https://www.youtube.com/embed/${trailer.key}?autoplay=1`}
+                title="Trailer"
+                className="w-full h-full"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       <div className="max-w-7xl mx-auto px-8 pt-8 relative z-50">
-        <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-white/50 hover:text-white transition-colors group bg-black/40 backdrop-blur-md px-4 py-2 rounded-full w-fit">
+        <button onClick={handleBack} className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-white/50 hover:text-white transition-colors group bg-black/40 backdrop-blur-md px-4 py-2 rounded-full w-fit">
           <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
           <span>Back</span>
         </button>
@@ -295,14 +351,12 @@ export default function Movie() {
             className="flex flex-wrap gap-3"
           >
             {trailer && (
-              <a 
-                href={`https://www.youtube.com/watch?v=${trailer.key}`}
-                target="_blank"
-                rel="noreferrer"
+              <button 
+                onClick={() => setShowTrailer(true)}
                 className="flex items-center gap-2 px-8 py-3 bg-white text-black text-[10px] font-black uppercase tracking-widest hover:bg-[#FF4E00] transition-colors"
               >
                 <Play className="w-3.5 h-3.5 fill-current" /> Watch Trailer
-              </a>
+              </button>
             )}
             <button 
               onClick={toggleWatchlist}
@@ -388,6 +442,15 @@ export default function Movie() {
                     src={provider.logo} 
                     alt={provider.name}
                     className="w-10 h-10 rounded-sm filter grayscale hover:grayscale-0 transition-all border border-white/10 bg-zinc-900 object-contain p-1"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      if (provider.name === 'YouTube') {
+                        target.src = 'https://www.youtube.com/favicon.ico';
+                      } else {
+                        target.src = 'https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/play-circle.svg';
+                        target.classList.add('invert', 'p-2');
+                      }
+                    }}
                   />
                   <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-1 bg-white text-black text-[8px] font-black uppercase tracking-tighter whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-[100]">
                     {provider.name}
@@ -414,25 +477,6 @@ export default function Movie() {
                   </div>
                 </a>
               ))}
-            </div>
-
-            <div className="pt-4 flex flex-wrap gap-3">
-              <a 
-                href={`https://vidsrc.to/embed/${type}/${id}`}
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center gap-2 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-[9px] font-black uppercase tracking-widest text-white/70 hover:text-white transition-all border border-white/5 rounded-sm"
-              >
-                <Play className="w-3 h-3 fill-current" /> Stream Server 1
-              </a>
-              <a 
-                href={`https://embed.smashystream.com/playere.php?tmdb=${id}`}
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center gap-2 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-[9px] font-black uppercase tracking-widest text-white/70 hover:text-white transition-all border border-white/5 rounded-sm"
-              >
-                <Play className="w-3 h-3 fill-current" /> Stream Server 2
-              </a>
             </div>
           </motion.div>
 
@@ -509,39 +553,121 @@ export default function Movie() {
               </div>
             )}
 
-            <div className="space-y-6">
+            <div className="space-y-8">
               <AnimatePresence mode="popLayout">
-                {comments.map((comment) => (
+                {comments.filter(c => !c.parentId).map((comment) => (
                   <motion.div 
                     layout
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95 }}
                     key={comment.id} 
-                    className="group"
+                    className="group space-y-4"
                   >
-                    <div className="flex justify-between items-start mb-2">
-                      <div className="flex items-center gap-3">
-                        <div className="w-6 h-6 bg-white text-black flex items-center justify-center text-[10px] font-black italic">
-                          {comment.userName.charAt(0).toUpperCase()}
+                    <div className="bg-zinc-900/30 border border-white/5 p-6 rounded-sm">
+                      <div className="flex justify-between items-start mb-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-white text-black flex items-center justify-center text-[10px] font-black italic">
+                            {comment.userName.charAt(0).toUpperCase()}
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-[10px] font-black uppercase tracking-tight">{comment.userName}</span>
+                            <span className="text-[8px] text-zinc-500 font-bold uppercase">
+                              {comment.createdAt?.toDate ? new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(comment.createdAt.toDate()) : 'Recent'}
+                            </span>
+                          </div>
                         </div>
-                        <span className="text-[10px] font-black uppercase tracking-tight">{comment.userName}</span>
-                        <span className="text-[8px] text-zinc-500 font-bold uppercase">
-                          {comment.createdAt?.toDate ? new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(comment.createdAt.toDate()) : 'Recent'}
-                        </span>
+                        <div className="flex items-center gap-4">
+                          {user && (
+                            <button 
+                              onClick={() => setReplyTo(replyTo === comment.id ? null : comment.id)}
+                              className={cn(
+                                "text-[9px] font-black uppercase tracking-widest transition-colors",
+                                replyTo === comment.id ? "text-[#FF4E00]" : "text-white/40 hover:text-[#FF4E00]"
+                              )}
+                            >
+                              Reply
+                            </button>
+                          )}
+                          {user?.uid === comment.userId && (
+                            <button 
+                              onClick={() => handleDeleteComment(comment.id)}
+                              className="text-zinc-500 hover:text-red-500 transition-all"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
                       </div>
-                      {user?.uid === comment.userId && (
-                        <button 
-                          onClick={() => handleDeleteComment(comment.id)}
-                          className="opacity-0 group-hover:opacity-100 text-zinc-500 hover:text-red-500 transition-all"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </button>
-                      )}
+                      <p className="text-sm text-zinc-300 font-medium leading-relaxed">
+                        {comment.content}
+                      </p>
                     </div>
-                    <p className="text-sm text-zinc-300 font-medium leading-relaxed pl-9">
-                      {comment.content}
-                    </p>
+
+                    {/* Reply Form */}
+                    <AnimatePresence>
+                      {replyTo === comment.id && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          className="overflow-hidden pl-12"
+                        >
+                          <form onSubmit={(e) => handlePostComment(e, comment.id)} className="relative">
+                            <textarea
+                              value={replyComment}
+                              onChange={(e) => setReplyComment(e.target.value)}
+                              placeholder={`Reply to ${comment.userName}...`}
+                              className="w-full bg-zinc-900 border border-white/10 p-3 min-h-[80px] text-xs focus:outline-none focus:border-[#FF4E00] transition-all resize-none font-medium pr-12"
+                              maxLength={1000}
+                              autoFocus
+                            />
+                            <button 
+                              type="submit"
+                              disabled={!replyComment.trim() || postingComment}
+                              className="absolute bottom-3 right-3 p-1.5 bg-[#FF4E00] text-black hover:scale-110 active:scale-95 transition-all disabled:opacity-50"
+                            >
+                              <Send className="w-3.5 h-3.5" />
+                            </button>
+                          </form>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
+                    {/* Replies List */}
+                    <div className="space-y-4 pl-12">
+                      {comments.filter(c => c.parentId === comment.id).map((reply) => (
+                        <motion.div 
+                          key={reply.id}
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          className="group/reply"
+                        >
+                          <div className="flex justify-between items-start mb-2">
+                            <div className="flex items-center gap-2">
+                              <div className="w-5 h-5 bg-zinc-800 text-white flex items-center justify-center text-[8px] font-black italic">
+                                {reply.userName.charAt(0).toUpperCase()}
+                              </div>
+                              <span className="text-[9px] font-black uppercase tracking-tight opacity-70">{reply.userName}</span>
+                              <span className="text-[7px] text-zinc-600 font-bold uppercase">
+                                {reply.createdAt?.toDate ? new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(reply.createdAt.toDate()) : 'Recent'}
+                              </span>
+                            </div>
+                            {user?.uid === reply.userId && (
+                              <button 
+                                onClick={() => handleDeleteComment(reply.id)}
+                                className="opacity-0 group-hover/reply:opacity-100 text-zinc-700 hover:text-red-500 transition-all"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            )}
+                          </div>
+                          <p className="text-xs text-zinc-400 font-medium leading-relaxed">
+                            {reply.content}
+                          </p>
+                        </motion.div>
+                      ))}
+                    </div>
                   </motion.div>
                 ))}
               </AnimatePresence>
