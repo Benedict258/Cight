@@ -445,42 +445,46 @@ export default function Scan() {
                 key="results"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="grid md:grid-cols-2 gap-12"
+                className="space-y-8"
               >
-                {/* Left: Info Widget */}
-                <div className="space-y-6">
-                  {/* Match Selector */}
-                  {matches.length > 1 && (
-                    <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none">
+                {/* Match Selector - Moved to top for consistency and accessibility */}
+                {matches.length > 1 && (
+                  <div className="space-y-3">
+                    <p className="text-[9px] font-black uppercase tracking-[0.3em] text-white/30 px-1">Multiple Matches Detected</p>
+                    <div className="flex gap-2 overflow-x-auto pb-4 scrollbar-none snap-x snap-mandatory">
                       {matches.map((m, idx) => (
                         <button
                           key={idx}
                           onClick={() => setSelectedMatchIndex(idx)}
                           className={cn(
-                            "px-4 py-2 text-[8px] font-black uppercase tracking-widest border transition-all whitespace-nowrap",
+                            "px-5 py-3 text-[10px] font-black uppercase tracking-widest border transition-all whitespace-nowrap snap-start min-w-[140px]",
                             selectedMatchIndex === idx 
-                              ? "bg-white text-black border-white" 
-                              : "bg-white/5 text-white/40 border-white/5 hover:border-white/20"
+                              ? "bg-white text-black border-white shadow-[0_0_20px_rgba(255,255,255,0.3)]" 
+                              : "bg-white/5 text-white/40 border-white/10 hover:border-white/30"
                           )}
                         >
-                          Result {idx + 1}: {m.title}
+                          <span className="opacity-50 mr-2">#{idx + 1}</span> {m.title}
                         </button>
                       ))}
                     </div>
-                  )}
+                  </div>
+                )}
 
-                  <div className="bg-[#151515] border border-white/10 rounded-sm p-8 relative">
-                    <div className="absolute -top-3 -right-3 bg-white text-black px-3 py-0.5 text-[9px] font-black uppercase tracking-tighter">
-                      Match Result
-                    </div>
-                    
-                    <div className="space-y-6">
-                      <div className="space-y-1.5">
-                        <h3 className="text-[10px] font-bold text-[#FF4E00] uppercase tracking-[0.2em]">Recognition Result</h3>
-                        <h2 className="text-4xl font-black uppercase italic tracking-tighter leading-none italic">{matches[selectedMatchIndex]?.title}</h2>
+                <div className="grid md:grid-cols-2 gap-12">
+                  {/* Left: Info Widget */}
+                  <div className="space-y-6">
+                    <div className="bg-[#151515] border border-white/10 rounded-sm p-8 relative">
+                      <div className="absolute -top-3 -right-3 bg-white text-black px-3 py-0.5 text-[9px] font-black uppercase tracking-tighter">
+                        Match Result
                       </div>
+                      
+                      <div className="space-y-6">
+                        <div className="space-y-1.5">
+                          <h3 className="text-[10px] font-bold text-[#FF4E00] uppercase tracking-[0.2em]">Recognition Result</h3>
+                          <h2 className="text-4xl font-black uppercase italic tracking-tighter leading-none italic">{matches[selectedMatchIndex]?.title}</h2>
+                        </div>
 
-                      <div className="flex flex-wrap gap-8 items-center border-y border-white/5 py-4">
+                      <div className="flex flex-wrap gap-4 sm:gap-8 items-center border-y border-white/5 py-4">
                         <div className="space-y-0.5">
                           <p className="text-[9px] uppercase font-black tracking-widest text-white/40">Confidence</p>
                           <p className="text-2xl font-black tracking-tighter">{(matches[selectedMatchIndex]?.confidence * 100).toFixed(1)}%</p>
@@ -596,9 +600,10 @@ export default function Scan() {
                     </div>
                   )}
                 </div>
-              </motion.div>
-            )}
-          </div>
+              </div>
+            </motion.div>
+          )}
+        </div>
         ) : (
           <div key="batch-mode" className="space-y-12">
             {/* Batch Input Zone - Replicating Single Scanner Aesthetic */}
@@ -727,8 +732,17 @@ export default function Scan() {
                           <div className="flex-1 flex flex-col justify-between gap-1 overflow-hidden">
                             <p className="text-[7px] font-black uppercase tracking-tighter leading-none group-hover:text-[#FF4E00] transition-colors truncate">
                               {item.matches?.[0]?.title}
-                              {item.matches && item.matches.length > 1 && ` (+${item.matches.length - 1})`}
                             </p>
+                            {item.matches && item.matches.length > 1 && (
+                              <div className="flex items-center gap-1">
+                                <span className="text-[5px] font-black uppercase bg-[#FF4E00]/20 text-[#FF4E00] px-1 py-0.5 rounded-[1px]">
+                                  MULTI-MATCH
+                                </span>
+                                <span className="text-[5px] font-black uppercase text-white/40">
+                                  +{item.matches.length - 1} MORE
+                                </span>
+                              </div>
+                            )}
                             
                             {item.matches?.[0]?.tmdbMatch ? (
                               <Link 
