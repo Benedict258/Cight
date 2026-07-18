@@ -7,6 +7,7 @@ import { useAuth } from '../App';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { collection, addDoc, query, where, getDocs, deleteDoc, doc, serverTimestamp, setDoc, orderBy, onSnapshot, limit, getDoc } from 'firebase/firestore';
 import { cn } from '../lib/utils';
+import SEO from '../components/SEO';
 
 export default function Movie() {
   const { id } = useParams();
@@ -241,6 +242,12 @@ export default function Movie() {
 
   return (
     <div className="min-h-screen pb-20">
+      <SEO 
+        title={`${title} (${year || 'N/A'})`} 
+        description={movie.overview || `View details, streaming providers, trailers, cast, and discussion for ${title}.`}
+        image={movie.backdrop_path ? `${TMDB_IMAGE_BASE}/w1280${movie.backdrop_path}` : undefined}
+        keywords={`cight, ${title}, movie trailer, watch ${title}, streaming providers, cast, ${movie.genres?.map((g: any) => g.name).join(', ') || ''}`}
+      />
       <AnimatePresence>
         {showTrailer && trailer && (
           <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">

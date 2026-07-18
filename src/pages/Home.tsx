@@ -3,6 +3,7 @@ import { getTrendingMovies, TMDB_IMAGE_BASE, getGenres, discoverMoviesByGenre } 
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { Play, Star, TrendingUp, Info, ArrowRight, ChevronDown, ArrowLeft, Search } from 'lucide-react';
+import SEO from '../components/SEO';
 
 export default function Home() {
   const navigate = useNavigate();
@@ -91,6 +92,11 @@ export default function Home() {
 
   return (
     <div className="space-y-16 min-h-screen">
+      <SEO 
+        title="Browse & Discover Movies" 
+        description="Discover the latest trending movies, top television shows, and diverse genres. Keep track of popular releases with trailers, reviews, and dynamic recommendations."
+        keywords="cight, trending movies, movie recommendations, film discovery, browse genres, movie details"
+      />
       <div className="max-w-7xl mx-auto px-8 pt-6">
         <button onClick={() => navigate('/')} className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-white/50 hover:text-[#FF4E00] transition-colors group">
           <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />

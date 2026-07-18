@@ -6,6 +6,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Trash2, Film, Star, ArrowRight, ArrowLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { TMDB_IMAGE_BASE } from '../lib/tmdb';
+import SEO from '../components/SEO';
 
 export default function Watchlist() {
   const { user } = useAuth();
@@ -48,6 +49,10 @@ export default function Watchlist() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 md:px-8 py-10 relative z-10">
+      <SEO 
+        title="My Watchlist" 
+        description="Manage your personalized list of movies, TV shows, and anime. Saved securely so you never forget what to watch next." 
+      />
       <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-white/50 hover:text-[#FF4E00] transition-colors mb-8 group">
         <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
         <span>Back</span>

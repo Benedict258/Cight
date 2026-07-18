@@ -6,6 +6,7 @@ import { cn } from '../lib/utils';
 import Markdown from 'react-markdown';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, MessageSquare, Send, Sparkles, User, Loader2, Info } from 'lucide-react';
+import SEO from '../components/SEO';
 
 interface Message {
   role: 'user' | 'model';
@@ -50,6 +51,10 @@ export default function Chat() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 md:px-8 h-[calc(100vh-6rem)] md:h-[calc(100vh-8rem)] flex flex-col pt-4 md:pt-6 relative z-10">
+      <SEO 
+        title="AI Cinematic Assistant" 
+        description="Discuss movies, get direct streaming links, ask trivia questions, and find the perfect film matching your mood with the CIGHT AI Assistant." 
+      />
       <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-white/50 hover:text-[#FF4E00] transition-colors mb-4 md:mb-6 group">
         <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
         <span>Back</span>

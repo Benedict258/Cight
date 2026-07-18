@@ -10,6 +10,7 @@ import { useAuth } from '../App';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { cn } from '../lib/utils';
+import SEO from '../components/SEO';
 
 interface DetectedMatch {
   title: string;
@@ -315,6 +316,11 @@ export default function Scan() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 md:px-8 py-10">
+      <SEO 
+        title="AI Scene Scanner" 
+        description="Identify any movie, TV show, or anime scene instantly. Upload screenshots, video clips, or input text descriptions of scenes to identify them with precision." 
+        keywords="cight, scene scanner, identify movie by screenshot, find anime from screenshot, trace.moe"
+      />
       <button onClick={handleBack} className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-white/50 hover:text-[#FF4E00] transition-colors mb-8 group">
         <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
         <span>Back</span>

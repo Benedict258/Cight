@@ -2,6 +2,7 @@ import { motion } from 'motion/react';
 import { Play, Search, Zap, Shield, ArrowRight, Camera, MessageSquare, Bookmark } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../App';
+import SEO from '../components/SEO';
 
 export default function Landing() {
   const { user, openAuthModal } = useAuth();
@@ -32,6 +33,11 @@ export default function Landing() {
 
   return (
     <div className="min-h-screen">
+      <SEO 
+        title="AI Cinematic Recognition & Movie Discovery" 
+        description="Identify movies, TV shows, and anime instantly from screenshots and clips. Power your cinematic curiosity with Gemini AI recognition, trailer streaming, and watchlist tracking."
+        keywords="cight, movie finder, screenshot search, scene recognition, trace.moe, anime scanner, gemini ai"
+      />
       {/* Hero Section */}
       <section className="relative pt-20 pb-32 overflow-hidden">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[600px] bg-gradient-to-b from-[#FF4E00]/10 to-transparent pointer-events-none" />
