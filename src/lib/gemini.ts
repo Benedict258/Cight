@@ -3,7 +3,7 @@ import { GoogleGenAI, Type } from "@google/genai";
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 export async function identifyMovieFromMedia(base64Data: string, mimeType: string) {
-  const model = "gemini-flash-latest"; 
+  const model = "gemini-2.5-flash"; 
   
   const response = await ai.models.generateContent({
     model,
@@ -76,7 +76,7 @@ export async function identifyMovieFromMedia(base64Data: string, mimeType: strin
 }
 
 export async function identifyMovieFromText(description: string) {
-  const model = "gemini-flash-latest"; 
+  const model = "gemini-2.5-flash"; 
   
   const response = await ai.models.generateContent({
     model,
@@ -143,7 +143,7 @@ export async function identifyMovieFromText(description: string) {
 }
 
 export async function chatAssistant(messages: { role: "user" | "model", content: string }[]) {
-  const model = "gemini-flash-latest";
+  const model = "gemini-2.5-flash";
   
   const response = await ai.models.generateContent({
     model,

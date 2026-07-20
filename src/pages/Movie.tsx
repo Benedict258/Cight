@@ -207,24 +207,12 @@ export default function Movie() {
   // Custom Providers Detection
   const isAnime = movie.genres?.some((g: any) => g.id === 16) && 
                   (movie.origin_country?.includes('JP') || movie.production_countries?.some((c: any) => c.iso_3166_1 === 'JP'));
-  const isKDrama = movie.origin_country?.includes('KR') || movie.production_countries?.some((c: any) => c.iso_3166_1 === 'KR');
-
   const customProviders = [
     { 
       name: 'MOVIEBOX', 
       logo: '/moviebox.svg',
       url: `https://moviebox.site/search?q=${encodeURIComponent(title)}`
     },
-    ...(isAnime ? [{ 
-      name: 'AnimePahe', 
-      logo: '/animepahe.svg',
-      url: `https://animepahe.com/anime?q=${encodeURIComponent(title)}`
-    }] : []),
-    ...(isKDrama ? [{ 
-      name: 'Nkiri', 
-      logo: '/nkiri.png',
-      url: `https://nkiri.com/?s=${encodeURIComponent(title)}`
-    }] : []),
     {
       name: 'YouTube',
       logo: 'https://upload.wikimedia.org/wikipedia/commons/e/ef/Youtube_logo.png',

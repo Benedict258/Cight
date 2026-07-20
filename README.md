@@ -15,29 +15,55 @@ AI-powered entertainment recognition and discovery platform. Identify movies and
 
 - **Frontend**: React, Vite, Tailwind CSS, Motion
 - **Backend/Storage**: Firebase (Firestore, Auth)
-- **AI**: Google Gemini 1.5 Flash (Recognition & Chat)
+- **AI**: Google Gemini 2.5 Flash (Recognition & Chat)
 - **Data Sources**:
   - **TMDB API**: Global movie/TV metadata and watch providers.
   - **AniList API**: Detailed anime metadata and character info.
   - **Trace.moe API**: Frame-accurate anime identification.
 
-## Setup Requirements
+## Setup
 
-To use the movie discovery features, you must provide a TMDB API Key.
+### Prerequisites
 
-1. Get an API key from [The Movie Database (TMDB)](https://www.themoviedb.org/documentation/api).
-2. Open the **Settings** menu in the AI Studio editor.
-3. Add a new secret with the key `VITE_TMDB_API_KEY` and your actual API key as the value.
+- Node.js 18+
+- Firebase project with Firestore and Authentication enabled
+- Google Gemini API key
+- TMDB API key
 
-## Development
+### Installation
 
-```bash
-npm install
+1. Clone the repository:
+   ```
+   git clone <repo-url>
+   cd Cight
+   ```
+
+2. Install dependencies:
+   ```
+   npm install
+   ```
+
+3. Set up Firebase:
+   - Copy `firebase-applet-config.example.json` to `firebase-applet-config.json`
+   - Fill in your Firebase project credentials
+
+4. Set up environment variables:
+   ```
+   cp .env.example .env
+   ```
+   Edit `.env` and add your API keys:
+   - `GEMINI_API_KEY` — Get from [Google AI Studio](https://aistudio.google.com/apikey)
+   - `VITE_TMDB_API_KEY` — Get from [TMDB](https://www.themoviedb.org/settings/api)
+
+### Development
+
+```
 npm run dev
 ```
 
-## Production Build
+### Production Build
 
-```bash
+```
 npm run build
 ```
+The build output is in the `dist/` directory. Deploy to any static host (Vercel, Netlify, Cloudflare Pages, Nginx, etc.). Ensure your host is configured to serve `index.html` for all routes (SPA fallback).

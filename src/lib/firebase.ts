@@ -58,6 +58,12 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
   throw new Error(JSON.stringify(errInfo));
 }
 
+if (!firebaseConfig || !firebaseConfig.projectId || firebaseConfig.projectId === 'YOUR_PROJECT_ID') {
+  throw new Error(
+    'Firebase config missing. Copy firebase-applet-config.example.json to firebase-applet-config.json and fill in your Firebase project credentials.'
+  );
+}
+
 const app = initializeApp(firebaseConfig);
 export const db = initializeFirestore(app, {
   experimentalForceLongPolling: true,

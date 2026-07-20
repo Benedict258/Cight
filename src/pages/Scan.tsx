@@ -36,6 +36,7 @@ interface BatchItem {
   type: 'file' | 'text';
   file?: File;
   preview?: string;
+  mimeType?: string;
   text?: string;
   status: 'idle' | 'processing' | 'done' | 'error';
   matches: DetectedMatch[];
@@ -233,10 +234,11 @@ export default function Scan() {
       const reader = new FileReader();
       reader.onloadend = () => {
         setBatchItems(prev => [...prev, {
-          id: Math.random().toString(36).substr(2, 9),
+          id: Math.random().toString(36).slice(2, 11),
           type: 'file',
           file,
           preview: reader.result as string,
+          mimeType: file.type,
           status: 'idle',
           matches: []
         }]);
@@ -247,7 +249,7 @@ export default function Scan() {
 
   const addBatchText = () => {
     setBatchItems(prev => [...prev, {
-      id: Math.random().toString(36).substr(2, 9),
+      id: Math.random().toString(36).slice(2, 11),
       type: 'text',
       text: '',
       status: 'idle',
@@ -280,7 +282,7 @@ export default function Scan() {
         let base64;
         if (item.type === 'file' && item.preview) {
           base64 = item.preview.split(',')[1];
-          const mime = item.file?.type || 'image/jpeg';
+          const mime = item.mimeType || item.file?.type || 'image/jpeg';
           aiResponse = await identifyMovieFromMedia(base64, mime);
         } else if (item.type === 'text' && item.text) {
           aiResponse = await identifyMovieFromText(item.text);
@@ -563,7 +565,7 @@ export default function Scan() {
                             YouTube <ExternalLink className="w-3 h-3" />
                           </a>
                         )}
-                        {['podcast', 'youtube', 'digital_series', 'digital_content'].includes(matches[selectedMatchIndex]?.type) && 
+                        {['podcast', 'youtube', 'digital_series', 'digital_series'].includes(matches[selectedMatchIndex]?.type) && 
                          !matches[selectedMatchIndex]?.tmdbMatch && 
                          !matches[selectedMatchIndex]?.platformLinks?.spotify && 
                          !matches[selectedMatchIndex]?.platformLinks?.youtube && (

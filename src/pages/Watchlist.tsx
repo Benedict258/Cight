@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
-import { collection, query, where, getDocs, deleteDoc, doc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, deleteDoc, doc } from 'firebase/firestore';
 import { useAuth } from '../App';
 import { Link, useNavigate } from 'react-router-dom';
 import { Trash2, Film, Star, ArrowRight, ArrowLeft } from 'lucide-react';
@@ -14,28 +14,24 @@ export default function Watchlist() {
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchWatchlist = async () => {
-    if (!user) return;
-    try {
-      const q = query(collection(db, 'watchlists'), where('userId', '==', user.uid));
-      const snap = await getDocs(q);
-      const data = snap.docs.map(d => ({ firestoreId: d.id, ...d.data() }));
-      setItems(data);
-    } catch (error) {
-      handleFirestoreError(error, OperationType.LIST, 'watchlists');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    fetchWatchlist();
+    if (!user) return;
+    setLoading(true);
+    const q = query(collection(db, 'watchlists'), where('userId', '==', user.uid));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const data = snapshot.docs.map(d => ({ firestoreId: d.id, ...d.data() }));
+      setItems(data);
+      setLoading(false);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'watchlists');
+      setLoading(false);
+    });
+    return () => unsubscribe();
   }, [user]);
 
   const removeItem = async (firestoreId: string) => {
     try {
       await deleteDoc(doc(db, 'watchlists', firestoreId));
-      setItems(prev => prev.filter(i => i.firestoreId !== firestoreId));
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, `watchlists/${firestoreId}`);
     }

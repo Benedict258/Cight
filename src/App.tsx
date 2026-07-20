@@ -5,17 +5,23 @@
 
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { useState, useEffect, createContext, useContext } from 'react';
+import { useState, useEffect, createContext, useContext, lazy, Suspense } from 'react';
 import { auth, db, handleFirestoreError, OperationType } from './lib/firebase';
-import { collection, doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import Navbar from './components/Navbar';
 import AuthModal from './components/AuthModal';
-import Landing from './pages/Landing';
-import Home from './pages/Home';
-import Scan from './pages/Scan';
-import Movie from './pages/Movie';
-import Chat from './pages/Chat';
-import Watchlist from './pages/Watchlist';
+const Landing = lazy(() => import('./pages/Landing'));
+const Home = lazy(() => import('./pages/Home'));
+const Scan = lazy(() => import('./pages/Scan'));
+const Movie = lazy(() => import('./pages/Movie'));
+const Chat = lazy(() => import('./pages/Chat'));
+const Watchlist = lazy(() => import('./pages/Watchlist'));
+
+const PageLoader = () => (
+  <div className="min-h-[60vh] flex items-center justify-center">
+    <div className="w-12 h-12 border-4 border-white/10 border-t-[#FF4E00] rounded-full animate-spin" />
+  </div>
+);
 
 interface AuthContextType {
   user: User | null;
@@ -51,7 +57,8 @@ export default function App() {
       const syncSubscriber = async () => {
         const path = `subscribers/${user.uid}`;
         try {
-          // Automated sync to local storage for agentic notifications via Substack export/API
+          const existingSub = await getDoc(doc(db, 'subscribers', user.uid));
+          if (existingSub.exists()) return;
           await setDoc(doc(db, 'subscribers', user.uid), {
             email: user.email,
             userId: user.uid,
@@ -76,14 +83,16 @@ export default function App() {
                 <div className="w-12 h-12 border-4 border-white/10 border-t-[#FF4E00] rounded-full animate-spin" />
               </div>
             ) : (
-              <Routes>
-                <Route path="/" element={user ? <Navigate to="/browse" /> : <Landing />} />
-                <Route path="/browse" element={<Home />} />
-                <Route path="/scan" element={<Scan />} />
-                <Route path="/movie/:id" element={<Movie />} />
-                <Route path="/chat" element={user ? <Chat /> : <Navigate to="/" />} />
-                <Route path="/watchlist" element={user ? <Watchlist /> : <Navigate to="/" />} />
-              </Routes>
+              <Suspense fallback={<PageLoader />}>
+                <Routes>
+                  <Route path="/" element={user ? <Navigate to="/browse" /> : <Landing />} />
+                  <Route path="/browse" element={<Home />} />
+                  <Route path="/scan" element={<Scan />} />
+                  <Route path="/movie/:id" element={<Movie />} />
+                  <Route path="/chat" element={user ? <Chat /> : <Navigate to="/" />} />
+                  <Route path="/watchlist" element={user ? <Watchlist /> : <Navigate to="/" />} />
+                </Routes>
+              </Suspense>
             )}
           </main>
 

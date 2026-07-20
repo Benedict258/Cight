@@ -78,7 +78,7 @@ export default function Home() {
         <Info className="w-12 h-12 text-[#FF4E00] mx-auto mb-4" />
         <h2 className="text-4xl font-black uppercase italic tracking-tighter mb-2">TMDB API Key Required</h2>
         <p className="text-zinc-400 font-medium max-w-md mx-auto">
-          Please add your <code className="text-white bg-white/10 px-2 py-0.5">VITE_TMDB_API_KEY</code> to the <strong className="text-white">Secrets</strong> panel in AI Studio settings to enable movie discovery features.
+          Please add your <code className="text-white bg-white/10 px-2 py-0.5">VITE_TMDB_API_KEY</code> to the <strong className="text-white">.env</strong> file to enable movie discovery features.
         </p>
       </div>
       <div className="flex justify-center gap-4">
@@ -177,11 +177,15 @@ export default function Home() {
             </div>
             
             <div className="aspect-video w-full bg-[#000] rounded-sm border border-white/5 overflow-hidden relative group">
-              <img 
-                src={`https://image.tmdb.org/t/p/original${heroMovie?.backdrop_path}`} 
-                className="w-full h-full object-cover opacity-60 group-hover:scale-110 transition-transform duration-1000"
-                alt="Demo"
-              />
+              {heroMovie?.backdrop_path ? (
+                <img 
+                  src={`https://image.tmdb.org/t/p/original${heroMovie.backdrop_path}`} 
+                  className="w-full h-full object-cover opacity-60 group-hover:scale-110 transition-transform duration-1000"
+                  alt="Demo"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-white/20 uppercase font-black text-xs tracking-widest">No Preview Available</div>
+              )}
               <div className="absolute inset-0 flex items-center justify-center border-2 border-[#FF4E00]/50 m-2">
                  <div className="absolute top-1 left-1 text-[8px] bg-[#FF4E00] px-1.5 py-0.5 font-bold text-black uppercase tracking-widest">FACE DETECTED</div>
                  <div className="w-8 h-8 border-t border-l border-[#FF4E00] absolute top-0 left-0"></div>
@@ -197,7 +201,7 @@ export default function Home() {
             <div className="mt-4 text-left">
               <div className="flex justify-between items-start">
                 <div>
-                  <h3 className="text-xl font-black uppercase tracking-tighter">{heroMovie?.title}</h3>
+                  <h3 className="text-xl font-black uppercase tracking-tighter">{heroMovie?.title || 'Unknown Title'}</h3>
                   <p className="text-[#FF4E00] text-[10px] font-bold uppercase tracking-widest mt-0.5">Trending Pick</p>
                 </div>
                 <div className="text-right">

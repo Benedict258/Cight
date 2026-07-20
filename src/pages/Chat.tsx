@@ -13,6 +13,8 @@ interface Message {
   content: string;
 }
 
+const MAX_MESSAGES = 30;
+
 export default function Chat() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -39,7 +41,8 @@ export default function Chat() {
     setLoading(true);
 
     try {
-      const response = await chatAssistant([...messages, userMsg]);
+      const conversation = [...messages, userMsg].slice(-MAX_MESSAGES);
+      const response = await chatAssistant(conversation);
       setMessages(prev => [...prev, { role: 'model', content: response }]);
     } catch (err) {
       console.error(err);

@@ -4,11 +4,9 @@ import { X, Mail, Lock, User, Loader2 } from 'lucide-react';
 import { 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
-  updateProfile,
-  signInWithPopup,
-  GoogleAuthProvider
+  updateProfile
 } from 'firebase/auth';
-import { auth, googleProvider } from '../lib/firebase';
+import { auth, googleProvider, login } from '../lib/firebase';
 import { cn } from '../lib/utils';
 
 interface AuthModalProps {
@@ -47,7 +45,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const handleGoogleLogin = async () => {
     setLoading(true);
     try {
-      await signInWithPopup(auth, googleProvider);
+      await login();
       onClose();
     } catch (err: any) {
       setError(err.message);

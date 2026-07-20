@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 interface SEOProps {
   title: string;
@@ -8,7 +8,11 @@ interface SEOProps {
 }
 
 export default function SEO({ title, description, keywords, image }: SEOProps) {
+  const createdElements = useRef<Element[]>([]);
+
   useEffect(() => {
+    createdElements.current = [];
+
     // Dynamic page title
     const fullTitle = title.includes('CIGHT') ? title : `${title} | CIGHT`;
     document.title = fullTitle;
@@ -20,6 +24,7 @@ export default function SEO({ title, description, keywords, image }: SEOProps) {
         metaDescription = document.createElement('meta');
         metaDescription.setAttribute('name', 'description');
         document.head.appendChild(metaDescription);
+        createdElements.current.push(metaDescription);
       }
       metaDescription.setAttribute('content', description);
 
@@ -28,6 +33,7 @@ export default function SEO({ title, description, keywords, image }: SEOProps) {
         ogDescription = document.createElement('meta');
         ogDescription.setAttribute('property', 'og:description');
         document.head.appendChild(ogDescription);
+        createdElements.current.push(ogDescription);
       }
       ogDescription.setAttribute('content', description);
 
@@ -36,6 +42,7 @@ export default function SEO({ title, description, keywords, image }: SEOProps) {
         twitterDescription = document.createElement('meta');
         twitterDescription.setAttribute('property', 'twitter:description');
         document.head.appendChild(twitterDescription);
+        createdElements.current.push(twitterDescription);
       }
       twitterDescription.setAttribute('content', description);
     }
@@ -47,6 +54,7 @@ export default function SEO({ title, description, keywords, image }: SEOProps) {
         metaKeywords = document.createElement('meta');
         metaKeywords.setAttribute('name', 'keywords');
         document.head.appendChild(metaKeywords);
+        createdElements.current.push(metaKeywords);
       }
       metaKeywords.setAttribute('content', keywords);
     }
@@ -58,6 +66,7 @@ export default function SEO({ title, description, keywords, image }: SEOProps) {
         ogImage = document.createElement('meta');
         ogImage.setAttribute('property', 'og:image');
         document.head.appendChild(ogImage);
+        createdElements.current.push(ogImage);
       }
       ogImage.setAttribute('content', image);
 
@@ -66,6 +75,7 @@ export default function SEO({ title, description, keywords, image }: SEOProps) {
         twitterImage = document.createElement('meta');
         twitterImage.setAttribute('property', 'twitter:image');
         document.head.appendChild(twitterImage);
+        createdElements.current.push(twitterImage);
       }
       twitterImage.setAttribute('content', image);
     }
@@ -76,6 +86,7 @@ export default function SEO({ title, description, keywords, image }: SEOProps) {
       ogTitle = document.createElement('meta');
       ogTitle.setAttribute('property', 'og:title');
       document.head.appendChild(ogTitle);
+      createdElements.current.push(ogTitle);
     }
     ogTitle.setAttribute('content', fullTitle);
 
@@ -84,9 +95,13 @@ export default function SEO({ title, description, keywords, image }: SEOProps) {
       twitterTitle = document.createElement('meta');
       twitterTitle.setAttribute('property', 'twitter:title');
       document.head.appendChild(twitterTitle);
+      createdElements.current.push(twitterTitle);
     }
     twitterTitle.setAttribute('content', fullTitle);
 
+    return () => {
+      createdElements.current.forEach(el => el.remove());
+    };
   }, [title, description, keywords, image]);
 
   return null;
