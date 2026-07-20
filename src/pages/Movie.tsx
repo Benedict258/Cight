@@ -1,13 +1,22 @@
-import { useState, useEffect } from 'react';
-import { useParams, Link, useSearchParams, useNavigate } from 'react-router-dom';
+import { useState, useEffect, useCallback } from 'react';
+import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { getDetails, TMDB_IMAGE_BASE } from '../lib/tmdb';
-import { Star, Clock, Calendar, Bookmark, Share2, ArrowLeft, Play, Info, ThumbsUp, ThumbsDown, MessageSquare, Send, Trash2 } from 'lucide-react';
+import { Star, Clock, Calendar, Bookmark, ArrowLeft, Play, Info, ThumbsUp, ThumbsDown, MessageSquare, Send, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../App';
-import { db, handleFirestoreError, OperationType } from '../lib/firebase';
-import { collection, addDoc, query, where, getDocs, deleteDoc, doc, serverTimestamp, setDoc, orderBy, onSnapshot, limit, getDoc } from 'firebase/firestore';
+import { apiGet, apiPost, apiDelete } from '../lib/api';
 import { cn } from '../lib/utils';
 import SEO from '../components/SEO';
+
+function formatDate(date: any, includeYear?: boolean) {
+  if (!date) return 'Recent';
+  const d = date?.toDate ? date.toDate() : new Date(date);
+  if (isNaN(d.getTime())) return 'Recent';
+  const opts: Intl.DateTimeFormatOptions = includeYear
+    ? { month: 'short', day: 'numeric', year: 'numeric' }
+    : { month: 'short', day: 'numeric' };
+  return new Intl.DateTimeFormat('en-US', opts).format(d);
+}
 
 export default function Movie() {
   const { id } = useParams();
@@ -32,6 +41,22 @@ export default function Movie() {
   const [userRating, setUserRating] = useState<'like' | 'dislike' | null>(null);
   const [ratingCounts, setRatingCounts] = useState({ likes: 0, dislikes: 0 });
 
+  const fetchComments = useCallback(() => {
+    apiGet('/comments/' + id)
+      .then(data => setComments(data))
+      .catch(err => console.error('Comments fetch failed:', err));
+  }, [id]);
+
+  const fetchRatings = useCallback(() => {
+    apiGet('/ratings/' + id)
+      .then(data => {
+        const likes = data?.filter?.((r: any) => r.type === 'like')?.length || 0;
+        const dislikes = data?.filter?.((r: any) => r.type === 'dislike')?.length || 0;
+        setRatingCounts({ likes, dislikes });
+      })
+      .catch(err => console.error('Ratings fetch failed:', err));
+  }, [id]);
+
   useEffect(() => {
     if (!id) return;
     
@@ -46,50 +71,22 @@ export default function Movie() {
         setLoading(false);
       });
 
-    if (user) {
-      const path = 'watchlists';
-      const q = query(collection(db, 'watchlists'), where('userId', '==', user.uid), where('movieId', '==', id));
-      getDocs(q).then(snap => setIsSaved(!snap.empty)).catch(e => handleFirestoreError(e, OperationType.LIST, path));
+    fetchComments();
+    fetchRatings();
 
-      // Fetch user rating
-      const ratingDocRef = doc(db, 'ratings', `${user.uid}_${id}`);
-      getDoc(ratingDocRef)
-        .then(snap => {
-          if (snap.exists()) {
-            setUserRating(snap.data().type);
+    if (user) {
+      apiGet('/watchlist/check/' + id)
+        .then(data => setIsSaved(data?.saved || false))
+        .catch(err => console.error('Watchlist check failed:', err));
+
+      apiGet('/ratings/' + id + '/mine')
+        .then(data => {
+          if (data?.type) {
+            setUserRating(data.type);
           }
         })
-        .catch(err => {
-          // If doc doesn't exist or permissions fail (though read is allowed in rules)
-          console.warn('Rating fetch failed:', err);
-        });
+        .catch(err => console.warn('Rating fetch failed:', err));
     }
-
-    // Subscribe to comments
-    const commentsQuery = query(
-      collection(db, 'comments'),
-      where('movieId', '==', id),
-      orderBy('createdAt', 'desc'),
-      limit(50)
-    );
-
-    const unsubscribeComments = onSnapshot(commentsQuery, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setComments(data);
-    }, (err) => handleFirestoreError(err, OperationType.LIST, 'comments'));
-
-    // Subscribe to ratings (to get counts)
-    const ratingsQuery = query(collection(db, 'ratings'), where('movieId', '==', id));
-    const unsubscribeRatings = onSnapshot(ratingsQuery, (snapshot) => {
-      const likes = snapshot.docs.filter(d => d.data().type === 'like').length;
-      const dislikes = snapshot.docs.filter(d => d.data().type === 'dislike').length;
-      setRatingCounts({ likes, dislikes });
-    });
-
-    return () => {
-      unsubscribeComments();
-      unsubscribeRatings();
-    };
   }, [id, user, type]);
 
   const toggleWatchlist = async () => {
@@ -99,28 +96,26 @@ export default function Movie() {
     }
     if (!movie || saving) return;
     setSaving(true);
-    
+
     try {
-      const path = 'watchlists';
-      const q = query(collection(db, 'watchlists'), where('userId', '==', user.uid), where('movieId', '==', id));
-      const snap = await getDocs(q);
-      
-      if (!snap.empty) {
-        await deleteDoc(doc(db, 'watchlists', snap.docs[0].id));
+      if (isSaved) {
+        const items = await apiGet('/watchlist');
+        const item = items?.find((w: any) => w.movieId === id);
+        if (item) {
+          await apiDelete('/watchlist/' + item.id);
+        }
         setIsSaved(false);
       } else {
-        await addDoc(collection(db, 'watchlists'), {
-          userId: user.uid,
-          movieId: movie.id.toString(),
+        await apiPost('/watchlist', {
+          movieId: id,
           movieTitle: movie.title || movie.name,
           mediaType: type,
-          posterPath: movie.poster_path,
-          addedAt: serverTimestamp()
+          posterPath: movie.poster_path
         });
         setIsSaved(true);
       }
     } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, 'watchlists');
+      console.error('Watchlist toggle failed:', error);
     } finally {
       setSaving(false);
     }
@@ -131,26 +126,19 @@ export default function Movie() {
       alert('Please sign in to rate');
       return;
     }
-    const ratingId = `${user.uid}_${id}`;
-    const ratingRef = doc(db, 'ratings', ratingId);
 
     try {
+      await apiPost('/ratings', { movieId: id, type: newType });
+
       if (userRating === newType) {
-        // Remove rating
-        await deleteDoc(ratingRef);
         setUserRating(null);
       } else {
-        // Set rating
-        await setDoc(ratingRef, {
-          userId: user.uid,
-          movieId: id,
-          type: newType,
-          updatedAt: serverTimestamp()
-        });
         setUserRating(newType);
       }
+
+      fetchRatings();
     } catch (e) {
-      handleFirestoreError(e, OperationType.WRITE, `ratings/${ratingId}`);
+      console.error('Rating failed:', e);
     }
   };
 
@@ -161,13 +149,10 @@ export default function Movie() {
 
     setPostingComment(true);
     try {
-      await addDoc(collection(db, 'comments'), {
-        userId: user.uid,
-        userName: user.displayName || user.email?.split('@')[0] || 'User',
+      await apiPost('/comments', {
         movieId: id,
         content: content.trim(),
-        parentId: parentId || null,
-        createdAt: serverTimestamp()
+        parentId: parentId || null
       });
       if (parentId) {
         setReplyComment('');
@@ -175,8 +160,9 @@ export default function Movie() {
       } else {
         setNewComment('');
       }
+      fetchComments();
     } catch (e) {
-      handleFirestoreError(e, OperationType.CREATE, 'comments');
+      console.error('Comment post failed:', e);
     } finally {
       setPostingComment(false);
     }
@@ -184,9 +170,10 @@ export default function Movie() {
 
   const handleDeleteComment = async (commentId: string) => {
     try {
-      await deleteDoc(doc(db, 'comments', commentId));
+      await apiDelete('/comments/' + commentId);
+      fetchComments();
     } catch (e) {
-      handleFirestoreError(e, OperationType.DELETE, `comments/${commentId}`);
+      console.error('Comment delete failed:', e);
     }
   };
 
@@ -568,7 +555,7 @@ export default function Movie() {
                           <div className="flex flex-col">
                             <span className="text-[10px] font-black uppercase tracking-tight">{comment.userName}</span>
                             <span className="text-[8px] text-zinc-500 font-bold uppercase">
-                              {comment.createdAt?.toDate ? new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(comment.createdAt.toDate()) : 'Recent'}
+                              {formatDate(comment.createdAt, true)}
                             </span>
                           </div>
                         </div>
@@ -645,7 +632,7 @@ export default function Movie() {
                               </div>
                               <span className="text-[9px] font-black uppercase tracking-tight opacity-70">{reply.userName}</span>
                               <span className="text-[7px] text-zinc-600 font-bold uppercase">
-                                {reply.createdAt?.toDate ? new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(reply.createdAt.toDate()) : 'Recent'}
+                                {formatDate(reply.createdAt)}
                               </span>
                             </div>
                             {user?.uid === reply.userId && (

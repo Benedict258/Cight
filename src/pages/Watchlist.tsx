@@ -1,12 +1,11 @@
 import { useState, useEffect } from 'react';
-import { db, handleFirestoreError, OperationType } from '../lib/firebase';
-import { collection, query, where, onSnapshot, deleteDoc, doc } from 'firebase/firestore';
 import { useAuth } from '../App';
 import { Link, useNavigate } from 'react-router-dom';
 import { Trash2, Film, Star, ArrowRight, ArrowLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { TMDB_IMAGE_BASE } from '../lib/tmdb';
 import SEO from '../components/SEO';
+import { apiGet, apiDelete } from '../lib/api';
 
 export default function Watchlist() {
   const { user } = useAuth();
@@ -16,24 +15,25 @@ export default function Watchlist() {
 
   useEffect(() => {
     if (!user) return;
-    setLoading(true);
-    const q = query(collection(db, 'watchlists'), where('userId', '==', user.uid));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map(d => ({ firestoreId: d.id, ...d.data() }));
-      setItems(data);
-      setLoading(false);
-    }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, 'watchlists');
-      setLoading(false);
-    });
-    return () => unsubscribe();
+    fetchWatchlist();
   }, [user]);
 
-  const removeItem = async (firestoreId: string) => {
+  const fetchWatchlist = async () => {
+    setLoading(true);
     try {
-      await deleteDoc(doc(db, 'watchlists', firestoreId));
-    } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, `watchlists/${firestoreId}`);
+      const data = await apiGet('/watchlist');
+      setItems(data);
+    } catch {
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const removeItem = async (id: number) => {
+    try {
+      await apiDelete('/watchlist/' + id);
+      setItems(prev => prev.filter(item => item.id !== id));
+    } catch {
     }
   };
 
@@ -75,14 +75,13 @@ export default function Watchlist() {
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-8">
           <AnimatePresence>
-            {items.map((item, idx) => (
+            {items.map((item) => (
               <motion.div
-                key={item.firestoreId}
+                key={item.id}
                 layout
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.8 }}
-                transition={{ delay: idx * 0.05 }}
                 className="group relative"
               >
                 <Link to={`/movie/${item.movieId}?type=${item.mediaType || 'movie'}`}>
@@ -104,7 +103,7 @@ export default function Watchlist() {
                 </Link>
                 
                 <button 
-                  onClick={() => removeItem(item.firestoreId)}
+                  onClick={() => removeItem(item.id)}
                   className="absolute -top-2 -right-2 w-8 h-8 bg-white text-black opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center hover:bg-black hover:text-white border-2 border-white z-20"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
