@@ -51,7 +51,7 @@ app.use(express.static(DIST, {
   },
 }));
 
-app.get('*', (req, res) => {
+app.use((req, res) => {
   res.sendFile(path.join(DIST, 'index.html'));
 });
 
