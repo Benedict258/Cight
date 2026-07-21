@@ -1,20 +1,11 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Mail, Lock, User, Loader2 } from 'lucide-react';
-import { 
-  signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword, 
-  updateProfile
-} from 'firebase/auth';
-import { auth, googleProvider, login } from '../lib/firebase';
+import { useAuth } from '../context/AuthContext';
 import { cn } from '../lib/utils';
 
-interface AuthModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-}
-
-export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
+export default function AuthModal() {
+  const { authModalOpen, setAuthModalOpen, login, register } = useAuth();
   const [mode, setMode] = useState<'login' | 'signup'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -29,12 +20,11 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
     try {
       if (mode === 'signup') {
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        await updateProfile(userCredential.user, { displayName });
+        await register(email, password, displayName);
       } else {
-        await signInWithEmailAndPassword(auth, email, password);
+        await login(email, password);
       }
-      onClose();
+      setAuthModalOpen(false);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -42,21 +32,11 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     }
   };
 
-  const handleGoogleLogin = async () => {
-    setLoading(true);
-    try {
-      await login();
-      onClose();
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const onClose = () => setAuthModalOpen(false);
 
   return (
     <AnimatePresence>
-      {isOpen && (
+      {authModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <motion.div
             initial={{ opacity: 0 }}
@@ -72,7 +52,6 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             className="relative w-full max-w-md bg-zinc-900 border border-white/10 rounded-sm p-8 shadow-2xl overflow-hidden"
           >
-            {/* Background Accent */}
             <div className="absolute top-0 right-0 w-32 h-32 bg-[#FF4E00]/10 blur-3xl -mr-16 -mt-16" />
             
             <button 
@@ -138,19 +117,6 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                   {loading ? <Loader2 className="w-4 h-4 animate-spin text-black" /> : (mode === 'login' ? 'Login' : 'Signup')}
                 </button>
               </form>
-
-              <div className="relative py-2">
-                <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/5" /></div>
-                <div className="relative flex justify-center text-[8px] font-black uppercase"><span className="bg-zinc-900 px-2 text-white/20">OR</span></div>
-              </div>
-
-              <button
-                onClick={handleGoogleLogin}
-                className="w-full py-4 bg-white text-black text-xs font-black uppercase tracking-[0.2em] hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
-              >
-                <img src="https://www.google.com/favicon.ico" className="w-4 h-4" alt="" />
-                Continue with Google
-              </button>
 
               <p className="text-center text-[10px] font-bold text-white/40 uppercase tracking-widest">
                 {mode === 'login' ? "Don't have an account?" : "Already have an account?"}{' '}

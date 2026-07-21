@@ -3,7 +3,7 @@ import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { getDetails, TMDB_IMAGE_BASE } from '../lib/tmdb';
 import { Star, Clock, Calendar, Bookmark, ArrowLeft, Play, Info, ThumbsUp, ThumbsDown, MessageSquare, Send, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { useAuth } from '../App';
+import { useAuth } from '../context/AuthContext';
 import { apiGet, apiPost, apiDelete } from '../lib/api';
 import { cn } from '../lib/utils';
 import SEO from '../components/SEO';
@@ -23,7 +23,7 @@ export default function Movie() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const type = (searchParams.get('type') || 'movie') as 'movie' | 'tv';
-  const { user, openAuthModal } = useAuth();
+  const { user, setAuthModalOpen } = useAuth();
   const [movie, setMovie] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [isSaved, setIsSaved] = useState(false);
@@ -526,7 +526,7 @@ export default function Movie() {
                 <p className="text-xs font-bold uppercase tracking-widest text-zinc-500">Sign in to join the conversation</p>
                 <div className="flex justify-center">
                   <button 
-                    onClick={openAuthModal}
+                    onClick={() => setAuthModalOpen(true)}
                     className="px-8 py-3 bg-[#FF4E00] text-black text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-transform"
                   >
                     Login / Sign Up
@@ -571,7 +571,7 @@ export default function Movie() {
                               Reply
                             </button>
                           )}
-                          {user?.uid === comment.userId && (
+                          {user?.id === comment.userId && (
                             <button 
                               onClick={() => handleDeleteComment(comment.id)}
                               className="text-zinc-500 hover:text-red-500 transition-all"
@@ -635,7 +635,7 @@ export default function Movie() {
                                 {formatDate(reply.createdAt)}
                               </span>
                             </div>
-                            {user?.uid === reply.userId && (
+                            {user?.id === reply.userId && (
                               <button 
                                 onClick={() => handleDeleteComment(reply.id)}
                                 className="opacity-0 group-hover/reply:opacity-100 text-zinc-700 hover:text-red-500 transition-all"

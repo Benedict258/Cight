@@ -4,8 +4,8 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { ensureSchema } from './db.js';
-import { connectRedis } from './redis.js';
+import { connectDB } from './db.js';
+import authRoutes from './routes/auth.js';
 import watchlistRoutes from './routes/watchlist.js';
 import commentsRoutes from './routes/comments.js';
 import ratingsRoutes from './routes/ratings.js';
@@ -31,6 +31,7 @@ app.use('/api/', rateLimit({
   legacyHeaders: false,
 }));
 
+app.use('/api/auth', authRoutes);
 app.use('/api/watchlist', watchlistRoutes);
 app.use('/api/comments', commentsRoutes);
 app.use('/api/ratings', ratingsRoutes);
@@ -56,19 +57,7 @@ app.use((req, res) => {
 });
 
 async function start() {
-  try {
-    await ensureSchema();
-    console.log('PostgreSQL schema ready');
-  } catch (err) {
-    console.warn('PostgreSQL schema setup failed (DB may not be connected):', err.message);
-  }
-
-  try {
-    await connectRedis();
-  } catch {
-    // Redis is optional
-  }
-
+  await connectDB();
   app.listen(PORT, () => {
     console.log(`Cight server running on port ${PORT}`);
   });

@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { chatAssistant } from '../lib/gemini';
-import { useAuth } from '../App';
+import { chatAssistant } from '../lib/groq';
+import { useAuth } from '../context/AuthContext';
 import { cn } from '../lib/utils';
 import Markdown from 'react-markdown';
 import { useNavigate } from 'react-router-dom';

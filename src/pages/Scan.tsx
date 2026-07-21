@@ -1,14 +1,12 @@
 import { useState, useRef, useEffect } from 'react';
 import { Camera, Upload, Search, Link as LinkIcon, ArrowRight, Loader2, Info, AlertTriangle, ArrowLeft, Play, Plus, Trash2, ExternalLink, MessageSquareText } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { identifyMovieFromMedia, identifyMovieFromText } from '../lib/gemini';
+import { identifyMovieFromMedia, identifyMovieFromText } from '../lib/groq';
 import { traceMoeIdentify } from '../lib/tracemoe';
 import { searchAnime } from '../lib/anilist';
 import { searchMulti, TMDB_IMAGE_BASE } from '../lib/tmdb';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../App';
-import { db, handleFirestoreError, OperationType } from '../lib/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { useAuth } from '../context/AuthContext';
 import { cn } from '../lib/utils';
 import SEO from '../components/SEO';
 
@@ -186,24 +184,6 @@ export default function Scan() {
       setMatches(enrichedMatches);
       setSelectedMatchIndex(0);
 
-      // Log to Firestore if user is logged in (log top match)
-      const topMatch = enrichedMatches[0];
-      if (user && topMatch.tmdbMatch) {
-        const path = 'scans';
-        try {
-          await addDoc(collection(db, 'scans'), {
-            userId: user.uid,
-            mediaUrl: 'upload-placeholder',
-            resultId: topMatch.tmdbMatch.id.toString(),
-            movieTitle: topMatch.tmdbMatch.title || topMatch.tmdbMatch.name,
-            mediaType: topMatch.tmdbMatch.media_type,
-            confidence: topMatch.confidence,
-            createdAt: serverTimestamp()
-          });
-        } catch (e) {
-          handleFirestoreError(e, OperationType.CREATE, path);
-        }
-      }
       
       setStep('results');
     } catch (err: any) {

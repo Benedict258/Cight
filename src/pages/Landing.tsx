@@ -1,11 +1,11 @@
 import { motion } from 'motion/react';
 import { Play, Search, Zap, Shield, ArrowRight, Camera, MessageSquare, Bookmark } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../App';
+import { useAuth } from '../context/AuthContext';
 import SEO from '../components/SEO';
 
 export default function Landing() {
-  const { user, openAuthModal } = useAuth();
+  const { user, setAuthModalOpen } = useAuth();
   const navigate = useNavigate();
 
   const features = [
@@ -88,7 +88,7 @@ export default function Landing() {
               
               {!user && (
                 <button 
-                  onClick={openAuthModal}
+                  onClick={() => setAuthModalOpen(true)}
                   className="px-10 py-5 border-2 border-white/20 hover:border-[#FF4E00] font-black uppercase italic text-sm tracking-widest transition-all text-center"
                 >
                   Join the Network

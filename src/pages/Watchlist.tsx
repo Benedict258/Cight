@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '../App';
+import { useAuth } from '../context/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
 import { Trash2, Film, Star, ArrowRight, ArrowLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';

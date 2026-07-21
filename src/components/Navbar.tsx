@@ -1,13 +1,12 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Camera, Home, MessageSquare, Bookmark, User as UserIcon, LogOut, Search, Menu, X } from 'lucide-react';
-import { useAuth } from '../App';
-import { logout } from '../lib/firebase';
+import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 import { useState } from 'react';
 
 export default function Navbar() {
-  const { user, openAuthModal } = useAuth();
+  const { user, setAuthModalOpen, logout } = useAuth();
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -115,13 +114,9 @@ export default function Navbar() {
                   </button>
                 </div>
                 <div className="w-8 h-8 md:w-9 md:h-9 bg-zinc-800 rounded-sm overflow-hidden border border-white/10 filter grayscale hover:grayscale-0 transition-all">
-                  {user.photoURL ? (
-                    <img src={user.photoURL} alt="profile" className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-[#FF4E00] text-black font-black italic text-xs">
-                      {user.displayName?.charAt(0) || user.email?.charAt(0).toUpperCase()}
-                    </div>
-                  )}
+                  <div className="w-full h-full flex items-center justify-center bg-[#FF4E00] text-black font-black italic text-xs">
+                    {user.displayName?.charAt(0) || user.email?.charAt(0).toUpperCase()}
+                  </div>
                 </div>
                 {/* Mobile logout button */}
                 <button onClick={() => logout()} className="sm:hidden text-white/40 hover:text-[#FF4E00]">
@@ -130,7 +125,7 @@ export default function Navbar() {
               </div>
             ) : (
               <button
-                onClick={openAuthModal}
+                onClick={() => setAuthModalOpen(true)}
                 className="text-[#FF4E00] text-[10px] font-black uppercase tracking-widest border border-[#FF4E00]/20 px-4 py-2 hover:bg-[#FF4E00] hover:text-black transition-all"
               >
                 Login
