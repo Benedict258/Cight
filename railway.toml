@@ -4,4 +4,4 @@
   buildCommand = "npm run build"
 
 [deploy]
-  startCommand = "node server/index.js"
+  startCommand = "node frontend-server.js"

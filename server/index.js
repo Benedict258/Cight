@@ -2,26 +2,22 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { connectDB } from './db.js';
 import authRoutes from './routes/auth.js';
 import watchlistRoutes from './routes/watchlist.js';
 import commentsRoutes from './routes/comments.js';
 import ratingsRoutes from './routes/ratings.js';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const DIST = path.join(__dirname, '..', 'dist');
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8080;
+const FRONTEND_URL = process.env.FRONTEND_URL || '*';
 
 const app = express();
 
-app.use(helmet({
-  contentSecurityPolicy: false,
-  crossOriginEmbedderPolicy: false,
+app.use(helmet());
+app.use(cors({
+  origin: FRONTEND_URL,
+  credentials: true,
 }));
-
-app.use(cors());
 app.use(express.json({ limit: '5kb' }));
 
 app.use('/api/', rateLimit({
@@ -40,26 +36,18 @@ app.get('/api/health', async (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-app.use(express.static(DIST, {
-  maxAge: '1d',
-  setHeaders(res, filePath) {
-    if (filePath.endsWith('.html')) {
-      res.setHeader('Cache-Control', 'no-cache');
-    }
-    if (filePath.endsWith('sw.js') || filePath.endsWith('workbox-')) {
-      res.setHeader('Cache-Control', 'no-cache');
-    }
-  },
-}));
+app.get('/api/', (req, res) => {
+  res.json({ name: 'Cight API', version: '1.0.0' });
+});
 
 app.use((req, res) => {
-  res.sendFile(path.join(DIST, 'index.html'));
+  res.status(404).json({ error: 'Not found' });
 });
 
 async function start() {
   await connectDB();
   app.listen(PORT, () => {
-    console.log(`Cight server running on port ${PORT}`);
+    console.log(`Cight API running on port ${PORT}`);
   });
 }
 
