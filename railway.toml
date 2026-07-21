@@ -1,7 +1,0 @@
-[build]
-  builder = "nixpacks"
-  installCommand = "npm install --include=optional"
-  buildCommand = "npm run build"
-
-[deploy]
-  startCommand = "node frontend-server.js"
