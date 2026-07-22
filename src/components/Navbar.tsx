@@ -1,12 +1,14 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Camera, Home, MessageSquare, Bookmark, User as UserIcon, LogOut, Search, Menu, X } from 'lucide-react';
+import { Camera, Home, MessageSquare, Bookmark, User as UserIcon, LogOut, Search, Menu, X, Sun, Moon } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 import { useState } from 'react';
 
 export default function Navbar() {
   const { user, setAuthModalOpen, logout } = useAuth();
+  const { theme, toggle } = useTheme();
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -35,7 +37,7 @@ export default function Navbar() {
 
   return (
     <>
-      <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/10 bg-[#0A0A0A]/80 backdrop-blur-md">
+      <nav className="fixed top-0 left-0 right-0 z-50 border-b border-[var(--border)] backdrop-blur-md" style={{ background: 'color-mix(in srgb, var(--bg) 80%, transparent)', backdropFilter: 'blur(12px)' }}>
         <div className="max-w-7xl mx-auto px-4 md:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-4">
             {/* Mobile Menu Toggle */}
@@ -92,6 +94,14 @@ export default function Navbar() {
           </div>
 
           <div className="flex items-center gap-3">
+            <button
+              onClick={toggle}
+              className="text-[var(--text-secondary)] hover:text-[var(--brand)] transition-colors p-2"
+              aria-label="Toggle theme"
+            >
+              {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </button>
+
             {/* Mobile Search Toggle */}
             <button 
               onClick={() => setIsSearchOpen(!isSearchOpen)}

@@ -6,6 +6,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { lazy, Suspense } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { ThemeProvider } from './context/ThemeContext';
 import Navbar from './components/Navbar';
 import AuthModal from './components/AuthModal';
 
@@ -28,7 +29,7 @@ function AppRoutes() {
   if (loading) return <PageLoader />;
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white font-sans selection:bg-[#FF4E00] selection:text-black selection:font-black relative overflow-x-hidden">
+    <div className="min-h-screen bg-[var(--bg)] text-[var(--text)] font-sans selection:bg-[#FF4E00] selection:text-black selection:font-black relative overflow-x-hidden transition-colors">
       <Navbar />
       <main className="pt-20">
         <Suspense fallback={<PageLoader />}>
@@ -53,10 +54,12 @@ function AppRoutes() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <Router>
-        <AppRoutes />
-      </Router>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <Router>
+          <AppRoutes />
+        </Router>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }

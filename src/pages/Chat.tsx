@@ -86,16 +86,23 @@ export default function Chat() {
               )}
             >
               <div className={cn(
-                "w-10 h-10 shrink-0 border flex items-center justify-center font-black italic mt-1",
-                m.role === 'user' ? "bg-white text-black border-white" : "bg-[#151515] border-white/10"
-              )}>
+                "w-10 h-10 shrink-0 border flex items-center justify-center font-black italic mt-1"
+              )}
+              style={m.role === 'user'
+                ? { background: 'var(--chat-user-bg)', color: 'var(--chat-user-text)', borderColor: 'var(--chat-user-text)' }
+                : { background: 'var(--chat-ai-bg)', borderColor: 'var(--border)', color: 'var(--chat-ai-text)' }
+              }>
                 {m.role === 'user' ? 'U' : <img src="/cight_logo.png" alt="CIGHT" className="w-12 h-12 object-contain" referrerPolicy="no-referrer" />}
               </div>
               <div className={cn(
                 "p-6 rounded-sm relative",
-                m.role === 'user' ? "bg-white text-black" : "bg-[#151515] border border-white/5 text-zinc-300"
-              )}>
-                <div className="markdown-body prose prose-sm max-w-none prose-p:font-medium prose-headings:font-black prose-headings:uppercase prose-headings:italic prose-p:text-xs">
+                m.role !== 'user' && "border"
+              )}
+              style={m.role === 'user'
+                ? { background: 'var(--chat-user-bg)', color: 'var(--chat-user-text)' }
+                : { background: 'var(--chat-ai-bg)', borderColor: 'var(--border)', color: 'var(--chat-ai-text)' }
+              }>
+                <div className="markdown-body">
                   <Markdown>{m.content}</Markdown>
                 </div>
                 {m.role === 'model' && (
