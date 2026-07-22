@@ -43,7 +43,7 @@ export default function Navbar() {
             {/* Mobile Menu Toggle */}
             <button 
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="md:hidden text-white/70 hover:text-white transition-colors"
+              className="md:hidden text-[var(--text-secondary)] hover:text-[var(--text)] transition-colors"
             >
               {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
@@ -62,18 +62,18 @@ export default function Navbar() {
                   }}
                 />
               </div>
-              <span className="text-lg md:text-xl font-black tracking-tighter uppercase italic text-white">Cight</span>
+              <span className="text-lg md:text-xl font-black tracking-tighter uppercase italic text-[var(--text)]">Cight</span>
             </Link>
           </div>
 
           <form onSubmit={handleSearch} className="hidden lg:flex flex-1 max-w-sm mx-10 relative group">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/40 group-focus-within:text-[#FF4E00] transition-colors" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--text-muted)] group-focus-within:text-[#FF4E00] transition-colors" />
             <input 
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search entertainment..."
-              className="w-full bg-white/5 border border-white/10 rounded-sm py-1.5 pl-10 pr-4 text-[10px] font-bold uppercase tracking-widest outline-none focus:border-[#FF4E00]/50 transition-all"
+              className="w-full bg-[var(--input-bg)] border border-[var(--border)] rounded-sm py-1.5 pl-10 pr-4 text-[10px] font-bold uppercase tracking-widest outline-none focus:border-[#FF4E00]/50 transition-all text-[var(--text)] placeholder:text-[var(--text-muted)]"
             />
           </form>
 
@@ -85,7 +85,7 @@ export default function Navbar() {
                 to={item.path}
                 className={cn(
                   "flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest transition-colors",
-                  location.pathname === item.path ? "text-[#FF4E00]" : "text-white/50 hover:text-white"
+                  location.pathname === item.path ? "text-[#FF4E00]" : "text-[var(--text-secondary)] hover:text-[var(--text)]"
                 )}
               >
                 {item.name}
@@ -105,7 +105,7 @@ export default function Navbar() {
             {/* Mobile Search Toggle */}
             <button 
               onClick={() => setIsSearchOpen(!isSearchOpen)}
-              className="lg:hidden text-white/70 hover:text-[#FF4E00] transition-colors p-2"
+              className="lg:hidden text-[var(--text-secondary)] hover:text-[#FF4E00] transition-colors p-2"
             >
               <Search className="w-5 h-5" />
             </button>
@@ -113,12 +113,12 @@ export default function Navbar() {
             {user ? (
               <div className="flex items-center gap-2 md:gap-3">
                 <div className="text-right hidden sm:block">
-                  <p className="text-[9px] font-black uppercase tracking-wider text-white/90 truncate max-w-[120px]">
+                  <p className="text-[9px] font-black uppercase tracking-wider text-[var(--text)] truncate max-w-[120px]">
                     {user.displayName || user.email?.split('@')[0]}
                   </p>
                   <button 
                     onClick={() => logout()}
-                    className="text-[9px] text-white/40 hover:text-[#FF4E00] flex items-center gap-1 ml-auto uppercase font-bold tracking-tighter transition-colors"
+                    className="text-[9px] text-[var(--text-secondary)] hover:text-[#FF4E00] flex items-center gap-1 ml-auto uppercase font-bold tracking-tighter transition-colors"
                   >
                     Sign Out
                   </button>
@@ -129,7 +129,7 @@ export default function Navbar() {
                   </div>
                 </div>
                 {/* Mobile logout button */}
-                <button onClick={() => logout()} className="sm:hidden text-white/40 hover:text-[#FF4E00]">
+                <button onClick={() => logout()} className="sm:hidden text-[var(--text-secondary)] hover:text-[#FF4E00]">
                   <LogOut className="w-4 h-4" />
                 </button>
               </div>
@@ -151,23 +151,23 @@ export default function Navbar() {
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
-              className="lg:hidden border-t border-white/10 bg-[#0A0A0A] overflow-hidden"
+              className="lg:hidden border-t border-[var(--border)] bg-[var(--bg)] overflow-hidden"
             >
               <div className="px-4 py-3">
                 <form onSubmit={handleSearch} className="relative group">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40 group-focus-within:text-[#FF4E00] transition-colors" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)] group-focus-within:text-[#FF4E00] transition-colors" />
                   <input 
                     type="text"
                     autoFocus
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search entertainment..."
-                    className="w-full bg-white/5 border border-white/10 rounded-sm py-2.5 pl-10 pr-4 text-xs font-bold uppercase tracking-widest outline-none focus:border-[#FF4E00]/50 transition-all"
+                    className="w-full bg-[var(--input-bg)] border border-[var(--border)] rounded-sm py-2.5 pl-10 pr-4 text-xs font-bold uppercase tracking-widest outline-none focus:border-[#FF4E00]/50 transition-all text-[var(--text)] placeholder:text-[var(--text-muted)]"
                   />
                   <button 
                     type="button"
                     onClick={() => setIsSearchOpen(false)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)] hover:text-[var(--text)]"
                   >
                     <X className="w-4 h-4" />
                   </button>
@@ -184,17 +184,17 @@ export default function Navbar() {
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
-              className="md:hidden border-t border-white/10 bg-[#0A0A0A]/95 overflow-hidden"
+              className="md:hidden border-t border-[var(--border)] overflow-hidden" style={{ background: 'color-mix(in srgb, var(--bg) 95%, transparent)' }}
             >
               <div className="px-6 py-8 space-y-8">
                 <form onSubmit={handleSearch} className="relative group">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40 group-focus-within:text-[#FF4E00] transition-colors" />
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)] group-focus-within:text-[#FF4E00] transition-colors" />
                   <input 
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search anything..."
-                    className="w-full bg-white/5 border border-white/10 rounded-sm py-3 pl-12 pr-4 text-[10px] font-bold uppercase tracking-widest outline-none focus:border-[#FF4E00]/50 transition-all"
+                    className="w-full bg-[var(--input-bg)] border border-[var(--border)] rounded-sm py-3 pl-12 pr-4 text-[10px] font-bold uppercase tracking-widest outline-none focus:border-[#FF4E00]/50 transition-all text-[var(--text)] placeholder:text-[var(--text-muted)]"
                   />
                 </form>
 
@@ -206,7 +206,7 @@ export default function Navbar() {
                     onClick={() => setIsMobileMenuOpen(false)}
                     className={cn(
                       "flex items-center gap-4 text-xs font-black uppercase tracking-[0.2em] transition-colors",
-                      location.pathname === item.path ? "text-[#FF4E00]" : "text-white/40 hover:text-white"
+                      location.pathname === item.path ? "text-[#FF4E00]" : "text-[var(--text-secondary)] hover:text-[var(--text)]"
                     )}
                   >
                     <item.icon className="w-4 h-4" />
