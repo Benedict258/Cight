@@ -39,6 +39,16 @@ export async function apiPost(endpoint: string, body: Record<string, unknown> = 
   return res.json();
 }
 
+export async function apiPut(endpoint: string, body: Record<string, unknown> = {}) {
+  const res = await fetch(`${API_BASE}${endpoint}`, {
+    method: 'PUT',
+    headers: headers(),
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
 export async function apiDelete(endpoint: string) {
   const res = await fetch(`${API_BASE}${endpoint}`, { method: 'DELETE', headers: headers() });
   if (!res.ok) throw new Error(await res.text());

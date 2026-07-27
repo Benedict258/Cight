@@ -7,6 +7,7 @@ import authRoutes from './routes/auth.js';
 import watchlistRoutes from './routes/watchlist.js';
 import commentsRoutes from './routes/comments.js';
 import ratingsRoutes from './routes/ratings.js';
+import conversationsRoutes from './routes/conversations.js';
 
 const PORT = process.env.PORT || 8080;
 const FRONTEND_URL = process.env.FRONTEND_URL || '*';
@@ -31,6 +32,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/watchlist', watchlistRoutes);
 app.use('/api/comments', commentsRoutes);
 app.use('/api/ratings', ratingsRoutes);
+app.use('/api/conversations', conversationsRoutes);
 
 app.get('/api/health', async (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
