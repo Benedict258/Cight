@@ -4,6 +4,7 @@ import { chatAssistant } from '../lib/groq';
 import { useAuth } from '../context/AuthContext';
 import { cn } from '../lib/utils';
 import Markdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, MessageSquare, Send, Sparkles, User, Loader2, Info } from 'lucide-react';
 import SEO from '../components/SEO';
@@ -103,7 +104,7 @@ export default function Chat() {
                 : { background: 'var(--chat-ai-bg)', borderColor: 'var(--border)', color: 'var(--chat-ai-text)' }
               }>
                 <div className="markdown-body">
-                  <Markdown>{m.content}</Markdown>
+                  <Markdown remarkPlugins={[remarkGfm]}>{m.content}</Markdown>
                 </div>
                 {m.role === 'model' && (
                   <div className="absolute -top-2.5 -left-2.5 bg-[#FF4E00] text-black text-[7px] font-black uppercase px-2 py-0.5">
