@@ -1,0 +1,13 @@
+User-agent: *
+Allow: /
+Allow: /browse
+Allow: /scan
+Allow: /movie/
+Allow: /chat
+Allow: /watchlist
+
+Disallow: /api/
+Disallow: /admin/
+Disallow: /dashboard/
+
+Sitemap: https://cight.ai/sitemap.xml
