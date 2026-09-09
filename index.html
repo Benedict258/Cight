@@ -3,14 +3,49 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+      // Suppress third-party browser extension errors (e.g. MetaMask / Web3 provider iframe handshake failures)
+      (function() {
+        function isExtensionError(err) {
+          var str = (err && (err.message || err.stack || err.reason || String(err))) || '';
+          return (
+            typeof str === 'string' &&
+            (str.indexOf('MetaMask') !== -1 ||
+             str.indexOf('metamask') !== -1 ||
+             str.indexOf('ethereum') !== -1 ||
+             str.indexOf('Failed to connect to MetaMask') !== -1)
+          );
+        }
+        window.addEventListener('unhandledrejection', function(event) {
+          if (isExtensionError(event.reason)) {
+            event.preventDefault();
+            if (typeof event.stopImmediatePropagation === 'function') {
+              event.stopImmediatePropagation();
+            }
+          }
+        }, true);
+        window.addEventListener('error', function(event) {
+          if (
+            isExtensionError(event.error) ||
+            isExtensionError(event.message) ||
+            (event.filename && (event.filename.indexOf('chrome-extension://') !== -1 || event.filename.indexOf('moz-extension://') !== -1))
+          ) {
+            event.preventDefault();
+            if (typeof event.stopImmediatePropagation === 'function') {
+              event.stopImmediatePropagation();
+            }
+          }
+        }, true);
+      })();
+    </script>
     <link rel="icon" type="image/png" href="/cight_logo.png" />
     <link rel="apple-touch-icon" href="/cight_logo.png" />
     <meta name="theme-color" content="#0a0a0a" />
     
     <!-- Primary Meta Tags -->
-    <title>CIGHT - AI Cinematic Recognition & Movie Discovery</title>
-    <meta name="title" content="CIGHT - AI Cinematic Recognition & Movie Discovery" />
-    <meta name="description" content="Instantly identify movies, TV shows, and anime from screenshots or video clips. Power your cinematic curiosity with Gemini AI recognition, intelligent recommendations, and interactive watchlist tracking." />
+    <title>CIGHT - AI-powered entertainment discovery</title>
+    <meta name="title" content="CIGHT - AI-powered entertainment discovery" />
+    <meta name="description" content="AI-powered entertainment discovery. Identify movies, TV shows, and anime from screenshots and clips instantly with real-time scene recognition, trailer streaming, and chat assistant." />
     <meta name="keywords" content="cight, clauselens, movie recognition, screenshot search, identify movie from screenshot, find anime from screenshot, trace.moe, tmdb movie search, movie ai finder, scene recognizer, movie scan, tv show locator, watchlist tracker, cinemaphile tools" />
     <meta name="robots" content="index, follow" />
     <meta name="language" content="English" />

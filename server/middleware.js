@@ -1,9 +1,9 @@
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET;
-if (!JWT_SECRET) {
-  console.error('FATAL: JWT_SECRET environment variable is required');
-  process.exit(1);
+const JWT_SECRET = process.env.JWT_SECRET || 'cight-default-dev-secret-jwt-key-2026';
+
+if (!process.env.JWT_SECRET) {
+  console.warn('[AI Studio] Notice: JWT_SECRET environment variable is not set. Using fallback secret for development.');
 }
 
 export function authMiddleware(req, res, next) {

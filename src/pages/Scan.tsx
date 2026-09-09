@@ -40,6 +40,77 @@ interface BatchItem {
   matches: DetectedMatch[];
 }
 
+// Helper to extract a crisp video screenshot frame for recognition
+function extractVideoFrame(file: File): Promise<string> {
+  return new Promise((resolve) => {
+    try {
+      const video = document.createElement('video');
+      video.preload = 'metadata';
+      video.muted = true;
+      video.playsInline = true;
+      const objectUrl = URL.createObjectURL(file);
+      video.src = objectUrl;
+
+      const cleanup = () => {
+        try {
+          URL.revokeObjectURL(objectUrl);
+          video.remove();
+        } catch {}
+      };
+
+      video.onloadedmetadata = () => {
+        // Seek to 1s or 25% of the video duration
+        video.currentTime = Math.min(1.0, video.duration > 0 ? video.duration * 0.25 : 0.5);
+      };
+
+      video.onseeked = () => {
+        try {
+          const canvas = document.createElement('canvas');
+          const maxDim = 1280;
+          let w = video.videoWidth || 640;
+          let h = video.videoHeight || 360;
+          if (w > maxDim || h > maxDim) {
+            if (w > h) {
+              h = Math.round((h * maxDim) / w);
+              w = maxDim;
+            } else {
+              w = Math.round((w * maxDim) / h);
+              h = maxDim;
+            }
+          }
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(video, 0, 0, w, h);
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+            cleanup();
+            resolve(dataUrl.split(',')[1]);
+            return;
+          }
+        } catch (e) {
+          console.warn('Canvas video frame extraction failed:', e);
+        }
+        cleanup();
+        resolve('');
+      };
+
+      video.onerror = () => {
+        cleanup();
+        resolve('');
+      };
+
+      // Timeout fallback after 3 seconds
+      setTimeout(() => {
+        cleanup();
+        resolve('');
+      }, 3000);
+    } catch {
+      resolve('');
+    }
+  });
+}
+
 export default function Scan() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -50,6 +121,7 @@ export default function Scan() {
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [mimeType, setMimeType] = useState<string | null>(null);
+  const [videoFrameBase64, setVideoFrameBase64] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState<'upload' | 'scanning' | 'results'>('upload');
   const [matches, setMatches] = useState<DetectedMatch[]>([]);
@@ -112,15 +184,24 @@ export default function Scan() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const batchFileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files?.[0];
     if (selected) {
       setFile(selected);
       setMimeType(selected.type);
+      setVideoFrameBase64(null);
       const reader = new FileReader();
       reader.onloadend = () => setPreview(reader.result as string);
       reader.readAsDataURL(selected);
       setError(null);
+
+      // If video, extract a representative frame for fast, accurate vision recognition
+      if (selected.type.startsWith('video/')) {
+        const frame = await extractVideoFrame(selected);
+        if (frame) {
+          setVideoFrameBase64(frame);
+        }
+      }
     }
   };
 
@@ -149,11 +230,15 @@ export default function Scan() {
         }
       }
 
-      // 2. TMDB Check (for movies/tv/anime)
-      if (['movie', 'tv', 'anime'].includes(match.type)) {
-        const multiSearch = await searchMulti(match.title, match.year);
-        if (multiSearch.results && multiSearch.results.length > 0) {
-          tmdbMatch = multiSearch.results[0];
+      // 2. TMDB Check (for movies/tv/anime/series)
+      if (['movie', 'tv', 'anime'].includes(match.type) || !match.type) {
+        let multiSearch = await searchMulti(match.title, match.year);
+        if ((!multiSearch?.results || multiSearch.results.length === 0) && match.year) {
+          multiSearch = await searchMulti(match.title);
+        }
+        if (multiSearch?.results && multiSearch.results.length > 0) {
+          const withPoster = multiSearch.results.find((r: any) => r.poster_path || r.backdrop_path);
+          tmdbMatch = withPoster || multiSearch.results[0];
         }
       }
     } catch (e) {
@@ -170,8 +255,9 @@ export default function Scan() {
     setError(null);
 
     try {
-      const base64 = preview.split(',')[1];
-      const aiResponse = await identifyMovieFromMedia(base64, mimeType);
+      const base64 = videoFrameBase64 || (preview.includes(',') ? preview.split(',')[1] : preview);
+      const mediaMime = videoFrameBase64 ? 'image/jpeg' : mimeType;
+      const aiResponse = await identifyMovieFromMedia(base64, mediaMime);
       
       if (!aiResponse.matches || aiResponse.matches.length === 0) {
         throw new Error("No matches found");
@@ -183,14 +269,12 @@ export default function Scan() {
 
       setMatches(enrichedMatches);
       setSelectedMatchIndex(0);
-
-      
       setStep('results');
     } catch (err: any) {
       console.error(err);
       setError(err.message?.includes('Forbidden') 
         ? "AI Service Access Denied (403). Check API key." 
-        : "Recognition failed. Please try a clearer image.");
+        : "Recognition failed. Please try a clearer image or screenshot.");
       setStep('upload');
     } finally {
       setLoading(false);
@@ -202,6 +286,7 @@ export default function Scan() {
     setFile(null);
     setPreview(null);
     setMimeType(null);
+    setVideoFrameBase64(null);
     setMatches([]);
     setSelectedMatchIndex(0);
     setError(null);
@@ -261,8 +346,16 @@ export default function Scan() {
         let aiResponse;
         let base64;
         if (item.type === 'file' && item.preview) {
-          base64 = item.preview.split(',')[1];
-          const mime = item.mimeType || item.file?.type || 'image/jpeg';
+          let b64 = item.preview.split(',')[1];
+          let mime = item.mimeType || item.file?.type || 'image/jpeg';
+          if (item.file && item.file.type.startsWith('video/')) {
+            const frame = await extractVideoFrame(item.file);
+            if (frame) {
+              b64 = frame;
+              mime = 'image/jpeg';
+            }
+          }
+          base64 = b64;
           aiResponse = await identifyMovieFromMedia(base64, mime);
         } else if (item.type === 'text' && item.text) {
           aiResponse = await identifyMovieFromText(item.text);

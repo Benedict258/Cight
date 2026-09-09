@@ -1,13 +1,29 @@
-const API_BASE = import.meta.env.VITE_API_URL || '/api';
+function getApiBase(): string {
+  const envUrl = import.meta.env.VITE_API_URL;
+  // If missing, or pointing to local loopback (e.g. localhost:8080) from a hosted origin, use relative '/api'
+  if (
+    !envUrl ||
+    envUrl.includes('localhost') ||
+    envUrl.includes('127.0.0.1') ||
+    envUrl.includes(':8080')
+  ) {
+    return '/api';
+  }
+  return envUrl.replace(/\/+$/, '');
+}
 
-let authToken: string | null = localStorage.getItem('cight_token');
+const API_BASE = getApiBase();
+
+let authToken: string | null = typeof window !== 'undefined' ? localStorage.getItem('cight_token') : null;
 
 export function setToken(token: string | null) {
   authToken = token;
-  if (token) {
-    localStorage.setItem('cight_token', token);
-  } else {
-    localStorage.removeItem('cight_token');
+  if (typeof window !== 'undefined') {
+    if (token) {
+      localStorage.setItem('cight_token', token);
+    } else {
+      localStorage.removeItem('cight_token');
+    }
   }
 }
 
@@ -23,9 +39,25 @@ function headers() {
   return h;
 }
 
+async function handleResponseError(res: Response): Promise<never> {
+  let errorMsg = `Request failed with status ${res.status}`;
+  try {
+    const data = await res.json();
+    errorMsg = data.error || data.message || JSON.stringify(data);
+  } catch {
+    try {
+      const text = await res.text();
+      if (text) errorMsg = text;
+    } catch {
+      // ignore
+    }
+  }
+  throw new Error(errorMsg);
+}
+
 export async function apiGet(endpoint: string) {
   const res = await fetch(`${API_BASE}${endpoint}`, { headers: headers() });
-  if (!res.ok) throw new Error(await res.text());
+  if (!res.ok) await handleResponseError(res);
   return res.json();
 }
 
@@ -35,7 +67,7 @@ export async function apiPost(endpoint: string, body: Record<string, unknown> = 
     headers: headers(),
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(await res.text());
+  if (!res.ok) await handleResponseError(res);
   return res.json();
 }
 
@@ -45,12 +77,12 @@ export async function apiPut(endpoint: string, body: Record<string, unknown> = {
     headers: headers(),
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(await res.text());
+  if (!res.ok) await handleResponseError(res);
   return res.json();
 }
 
 export async function apiDelete(endpoint: string) {
   const res = await fetch(`${API_BASE}${endpoint}`, { method: 'DELETE', headers: headers() });
-  if (!res.ok) throw new Error(await res.text());
+  if (!res.ok) await handleResponseError(res);
   return res.json();
 }

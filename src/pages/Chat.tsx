@@ -310,7 +310,7 @@ export default function Chat() {
             <img src="/cight_logo.png" alt="" className="w-8 h-8 md:w-10 md:h-10 object-contain" referrerPolicy="no-referrer" />
             <div>
               <h1 className="text-sm md:text-lg font-black uppercase italic tracking-tight">AI Assistant</h1>
-              <p className="text-[#FF4E00] text-[7px] md:text-[8px] font-black uppercase tracking-[0.2em]">Specialized Agent</p>
+              <p className="text-[#FF4E00] text-[7px] md:text-[8px] font-black uppercase tracking-[0.2em]">meta/muse-glimmer-30b · NVIDIA</p>
             </div>
           </div>
           {saveStatus === 'saving' && (
