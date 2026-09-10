@@ -11,7 +11,7 @@ import ratingsRoutes from './routes/ratings.js';
 import conversationsRoutes from './routes/conversations.js';
 import aiRoutes from './routes/ai.js';
 
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 const app = express();
 
 // Trust reverse proxy (nginx / Cloud Run)
