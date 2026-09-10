@@ -103,7 +103,7 @@ if (process.env.NODE_ENV !== 'production') {
   } catch (err) {
     console.error('Failed to initialize Vite dev middleware:', err);
   }
-} else {
+} else if (process.env.SERVE_FRONTEND === 'true') {
   const distPath = path.join(process.cwd(), 'dist');
   app.use(express.static(distPath));
   // In Express 5, use regex or *all for SPA fallback
